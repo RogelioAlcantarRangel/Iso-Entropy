@@ -151,6 +151,11 @@ Respuesta en formato JSON:
     # =========================================================
 
     def should_call_llm(self, I, K_base, stock, liquidity, rigidez):
+        self._log(
+            f"DEBUG: should_call_llm | I={I:.2f}, K_base={K_base:.2f}, "
+            f"stock={stock:.2f}, liquidity={liquidity:.2f}, "
+            f"experimentos={len(self.experiment_log)}"
+        )
         # 1️⃣ Colapso matemático
         if I > K_base * 1.5:
             return False, {
@@ -185,11 +190,19 @@ Respuesta en formato JSON:
             k_min = max(0.1, K_base - MAX_K_STEP)
             k_max = min(10.0, K_base + MAX_K_STEP)
             if abs(k_max - k_min) < 1e-6:
-                return False, {
-                    "action": "TERMINATE",
-                    "reasoning": "Sin grados de libertad en K",
-                    "final_verdict": "## ⚠️ Sistema estancado"
-                }
+                # Si no hemos hecho ninguna simulación aún, NO terminamos: forzamos una simulación conservadora.
+                if len(self.experiment_log) == 0:
+                    return False, {
+                        "action": "SIMULATE",
+                        "reasoning": "No hay grados de libertad detectados pero no existen observaciones. Ejecutar prueba conservadora.",
+                        "parameters": {"K": K_base + 0.1}
+                    }
+                else:
+                    return False, {
+                        "action": "TERMINATE",
+                        "reasoning": "Sin grados de libertad en K",
+                        "final_verdict": "## ⚠️ Sistema estancado"
+                    }
 
         return True, None
 
@@ -384,6 +397,22 @@ Parámetros Físicos Base:
                 decision = self._decide_next_step(system_prompt)
 
             action = decision.get("action", "UNKNOWN")
+            self._log(f"DEBUG: acción recibida = {action}, experimentos = {len(self.experiment_log)}")
+            # --- GUARD: no permitir TERMINATE sin al menos 1 experimento ---
+            if action == "TERMINATE" and len(self.experiment_log) == 0:
+                # Si la terminación fue generada por pre-control (auto_decision) y contiene 'final_verdict', permitir.
+                # Para diferenciar, comprobamos si auto_decision está presente (variable 'should_call' / 'auto_decision').
+                # Si no tienes acceso directo aquí a 'should_call' / 'auto_decision', consideramos prudente forzar una simulación.
+                self._log("🧠 GUARD: No hay observaciones experimentales. Forzando 1ª SIMULATE.")
+                # Forzar una simulación conservadora — mantenemos K_base para minimizar impacto
+                decision = {
+                    "action": "SIMULATE",
+                    "reasoning": "Guard clause: primera simulación obligatoria para obtener evidencia empírica.",
+                    "parameters": {"K": K_base}
+                }
+                action = "SIMULATE"
+            # -------------------------------------------------------------
+
             reasoning = decision.get("reasoning", "Sin razonamiento proporcionado")
 
             self._log(f"\n💭 RAZONAMIENTO DEL AGENTE: {reasoning}")
