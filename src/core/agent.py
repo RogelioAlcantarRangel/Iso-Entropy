@@ -362,7 +362,8 @@ Respuesta en formato JSON:
             "last_collapse": None,
             "stable_hits": 0,
             "K_min_viable": None,
-            "margin": None
+            "margin": None,
+            "replicas_confirmadas": 0  # Contador de réplicas independientes que confirman K_min_viable
         }
 
         # Grounding físico
@@ -645,6 +646,10 @@ Parámetros Físicos Base:
                                     if (self.agent_state.get("K_min_viable") is None) or (replica_K < self.agent_state.get("K_min_viable")):
                                         self.agent_state["K_min_viable"] = replica_K
                                         self.agent_state["margin"] = replica_K - I
+                                        self.agent_state["replicas_confirmadas"] = 1  # Primera réplica
+                                    elif abs(replica_K - self.agent_state.get("K_min_viable", 0)) < 0.01:
+                                        # Réplica del mismo K_min_viable
+                                        self.agent_state["replicas_confirmadas"] = self.agent_state.get("replicas_confirmadas", 0) + 1
                                     K_base = replica_K
                                     break
                                 elif replica_collapse > marginal_threshold or replica_ub95 >= stability_threshold:
@@ -654,6 +659,19 @@ Parámetros Físicos Base:
                 except Exception as e:
                     # No romper el loop por fallo en esta etapa forzada
                     self._log(f"   ⚠️ Error durante re-exploración forzada: {e} (continuando).")
+                
+                # -----------------------------
+                # FORZAR CONCLUDE DESDE ORIENT SI K_min_viable ES None DESPUÉS DE INTENTOS FORZADOS
+                # -----------------------------
+                # Contar intentos forzados ejecutados
+                forced_executed = sum(1 for exp in self.experiment_log 
+                                     if exp.get("label", "").startswith("forced"))
+                if (self.fsm.phase == AgentPhase.ORIENT and 
+                    self.agent_state.get("K_min_viable") is None and
+                    forced_executed >= 2):
+                    self._log("\n🔚 Forzando transición a CONCLUDE: K_min_viable no detectado tras intentos forzados en fase ORIENT.")
+                    # Forzar transición a CONCLUDE para generar reporte FRÁGIL
+                    self.fsm.phase = AgentPhase.CONCLUDE
                 # -----------------------------
 
 
@@ -670,7 +688,11 @@ Parámetros Físicos Base:
                         K < self.agent_state["K_min_viable"]):
                         self.agent_state["K_min_viable"] = K
                         self.agent_state["margin"] = K - I
+                        self.agent_state["replicas_confirmadas"] = 1  # Primera confirmación
                         self._log(f"   ✨ K mínimo viable detectado (estadísticamente confirmado): {K:.2f} bits (UB95={ub95:.1%})")
+                    elif abs(K - self.agent_state.get("K_min_viable", 0)) < 0.01:
+                        # Mismo K_min_viable, incrementar contador de réplicas
+                        self.agent_state["replicas_confirmadas"] = self.agent_state.get("replicas_confirmadas", 0) + 1
 
                 # Actualizar FSM con validación estadística
                 try:
@@ -820,7 +842,10 @@ Historial de Experimentos (resumido):
                 default=0.0
             )
             
-            # Determinar estado final con validación estadística
+            # Determinar estado final según definiciones formales
+            replicas_confirmadas = self.agent_state.get("replicas_confirmadas", 0)
+            fsm_phase = self.fsm.phase
+            
             if K_min is not None:
                 # Verificar que K_min tenga validación estadística
                 k_min_experiments = [exp for exp in all_experiments 
@@ -830,34 +855,99 @@ Historial de Experimentos (resumido):
                     exp["resultado"].get("upper_ci95", 1.0) < 0.05
                     for exp in k_min_experiments
                 )
-                if k_min_statistically_stable:
+                
+                # ROBUSTO solo si: K_min existe + FSM no en ORIENT + ≥2 réplicas confirmadas
+                if (k_min_statistically_stable and 
+                    fsm_phase != AgentPhase.ORIENT and 
+                    replicas_confirmadas >= 2):
                     estado_final = "✅ ROBUSTO"
                 else:
+                    # MARGINAL si K_min existe pero no cumple criterios de ROBUSTO
                     estado_final = "⚠️ MARGINAL"
-            elif min_attempts_for_fragile and max_ub95 >= 0.05:
-                estado_final = "❌ FRÁGIL"
-            elif max_collapse < 0.15:
+            elif min_attempts_for_fragile:
+                # FRÁGIL si: 1 inicial + ≥2 forzadas + ninguna cumple estabilidad + K_min_viable es None
+                # Verificar que ninguna simulación cumple estabilidad estadística
+                ninguna_estable = not any(
+                    exp["resultado"]["tasa_de_colapso"] < 0.05 and 
+                    exp["resultado"].get("upper_ci95", 1.0) < 0.05
+                    for exp in all_experiments
+                )
+                if ninguna_estable:
+                    estado_final = "❌ FRÁGIL"
+                else:
+                    estado_final = "⚠️ MARGINAL"
+            elif max_collapse < 0.15 and max_ub95 < 0.15:
                 estado_final = "⚠️ MARGINAL"
             else:
-                estado_final = "❌ FRÁGIL"
+                # Caso por defecto: si no hay suficiente evidencia, MARGINAL
+                estado_final = "⚠️ MARGINAL"
             
             final_report = f"""# 🎯 Diagnóstico de Fragilidad Estructural
 
 ## Resumen Ejecutivo
 - **Sistema Analizado:** {volatilidad} volatilidad, {rigidez} rigidez, {colchon} meses colchón
 - **Estado Final:** {estado_final}
-- **Probabilidad de Colapso Máxima:** {max_collapse:.1%}
-- **UB95 Máximo:** {max_ub95:.1%}
 - **Fase FSM Final:** {self.fsm.phase_name()}
 - **Experimentos Ejecutados:** {total_attempts} (inicial: {initial_count}, forzados: {forced_count})
 
+## 📊 Evidencia Experimental Observada
+- **Máxima Probabilidad de Colapso Observada:** {max_collapse:.1%}
+  - Esta es la tasa de colapso más alta medida en todas las simulaciones ejecutadas
+- **UB95 Máximo:** {max_ub95:.1%}
+  - Límite superior del intervalo de confianza (95%) más alto observado
+"""
+            
+            # Agregar sección de estado final bajo K_min_viable si existe
+            if K_min is not None:
+                k_min_experiments = [exp for exp in all_experiments 
+                                    if abs(exp["hipotesis"]["K"] - K_min) < 0.01]
+                if k_min_experiments:
+                    k_min_collapse = min(exp["resultado"]["tasa_de_colapso"] for exp in k_min_experiments)
+                    k_min_ub95 = min(exp["resultado"].get("upper_ci95", 1.0) for exp in k_min_experiments)
+                    final_report += f"""
+## 🎯 Estado Final Bajo K_min_viable (Proyección)
+- **Probabilidad de Colapso bajo K={K_min:.2f} bits:** {k_min_collapse:.1%}
+- **UB95 bajo K={K_min:.2f} bits:** {k_min_ub95:.1%}
+- **Nota:** Esta proyección asume que el sistema opera con K aumentado hasta {K_min:.2f} bits
+"""
+            
+            final_report += """
 ## 🔬 Hallazgos Clave
 """
 
             if K_min is not None:
-                final_report += f"""
-- **K Mínimo Viable Detectado (estadísticamente confirmado):** {K_min:.2f} bits
+                # Distinguir entre robustez actual vs. potencial
+                if max_collapse > 0.15:
+                    # Hubo colapsos previos altos - robustez potencial
+                    final_report += f"""
+- **Región Estable Detectada (requiere aumentar K):** {K_min:.2f} bits
+  - Aunque se observaron colapsos del {max_collapse:.1%} en configuraciones iniciales, el sistema presenta una región estable al aumentar K hasta {K_min:.2f} bits
   - Capacidad mínima requerida para mantener estabilidad (colapso < 5% y UB95 < 5%)
+  - Réplicas independientes confirmadas: {replicas_confirmadas}
+"""
+                    # Advertencia si FSM está en ORIENT
+                    if fsm_phase == AgentPhase.ORIENT:
+                        final_report += f"""
+  - ⚠️ **Nota:** El sistema se encuentra en fase ORIENT. La robustez requiere validación adicional (fase VALIDATE) con ≥2 réplicas independientes confirmadas.
+"""
+                    final_report += f"""
+- **Margen de Seguridad sobre I:** {margin:.2f} bits
+  - Exceso de capacidad disponible para absorber picos
+"""
+                else:
+                    # No hubo colapsos altos - robustez actual
+                    final_report += f"""
+- **K Mínimo Viable Detectado (estadísticamente confirmado):** {K_min:.2f} bits
+  - El sistema muestra estabilidad estructural en la configuración actual
+  - Capacidad mínima requerida para mantener estabilidad (colapso < 5% y UB95 < 5%)
+  - Réplicas independientes confirmadas: {replicas_confirmadas}
+"""
+                    # Advertencia si FSM está en ORIENT
+                    if fsm_phase == AgentPhase.ORIENT:
+                        final_report += f"""
+  - ⚠️ **Nota:** El sistema se encuentra en fase ORIENT. La robustez requiere validación adicional (fase VALIDATE) con ≥2 réplicas independientes confirmadas.
+"""
+                    final_report += f"""
 - **Margen de Seguridad sobre I:** {margin:.2f} bits
   - Exceso de capacidad disponible para absorber picos
 """
