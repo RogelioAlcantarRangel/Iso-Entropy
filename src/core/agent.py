@@ -476,6 +476,67 @@ Parámetros Físicos Base:
                     "resultado": {"tasa_de_colapso": colapso_pct},
                     "razonamiento_previo": reasoning
                 })
+                
+                # -----------------------------
+                # 🔁 FORZAR RE-EXPLORACIÓN (OPCIONAL)
+                # Si primer experimento colapsó totalmente (≈100%), intentar 1-2 saltos grandes de K
+                # para verificar si existe un umbral estable no explorado por incrementos pequeños.
+                # -----------------------------
+                try:
+                    # Solo aplicar si estamos en la primera observación absoluta y colapso total
+                    if len(self.experiment_log) == 1 and colapso_pct >= 0.999:
+                        forced_attempts = 2           # número de intentos forzados (puedes reducir a 1)
+                        delta_K_step = 1.0            # salto grande en K (bits)
+                        self._log("\n🔎 Primer experimento colapsó. Iniciando re-exploración forzada de K...")
+
+                        for attempt in range(1, forced_attempts + 1):
+                            forced_K = max(0.1, min(10.0, K_base + attempt * delta_K_step))
+                            # Aplicar el mismo clamp/action gate que usas normalmente
+                            MAX_K_STEP = 0.75
+                            forced_K = max(K_base - MAX_K_STEP, min(forced_K, K_base + MAX_K_STEP * 4))
+                            # Nota: permitimos un rango mayor para forzar la exploración (multiplicamos MAX_K_STEP por 4)
+                            self._log(f"   🧪 Intento forzado #{attempt}: probando K = {forced_K:.2f}")
+
+                            theta_f = calculate_collapse_threshold(stock, capital, liq)
+                            self._log(f"      • Ejecutando 500 simulaciones Monte Carlo con I={I:.2f}, K={forced_K:.2f}, θ_max={theta_f:.2f}...")
+                            sim_forced = run_simulation(I, forced_K, theta_f, runs=500)
+                            forced_collapse = sim_forced.get("tasa_de_colapso", 1.0)
+
+                            # Registrar experimento forzado en memoria
+                            self.experiment_log.append({
+                                "ciclo": f"{iteration}-f{attempt}",
+                                "timestamp": datetime.now().isoformat(),
+                                "hipotesis": {"I": I, "K": forced_K},
+                                "parametros_completos": {
+                                    "stock_ratio": stock,
+                                    "capital_ratio": capital,
+                                    "liquidity": liq,
+                                    "theta_max": theta_f
+                                },
+                                "resultado": {"tasa_de_colapso": forced_collapse},
+                                "razonamiento_previo": f"Forced attempt #{attempt} tras colapso total"
+                            })
+
+                            self._log(f"      ➤ Resultado: Tasa de colapso = {forced_collapse:.1%}")
+
+                            # Si encontramos estabilidad, registrarlo y salir de intentos forzados
+                            if forced_collapse < 0.05:
+                                self._log(f"   ✅ Intento forzado exitoso con K={forced_K:.2f}. Marcando K_min_viable.")
+                                # Actualizar K_min_viable si aplica
+                                if (self.agent_state.get("K_min_viable") is None) or (forced_K < self.agent_state.get("K_min_viable")):
+                                    self.agent_state["K_min_viable"] = forced_K
+                                    self.agent_state["margin"] = forced_K - I
+                                # Actualizar K_base para siguientes iteraciones
+                                K_base = forced_K
+                                break
+                            else:
+                                # Si no funcionó, actualizar K_base para siguiente intento forzado
+                                K_base = forced_K
+                except Exception as _:
+                    # No romper el loop por fallo en esta etapa forzada
+                    self._log("   ⚠️ Error durante re-exploración forzada (continuando).")
+                # -----------------------------
+
 
                 # State Compressor: Comprimir después de 3 ciclos
                 if len(self.experiment_log) > 3:
