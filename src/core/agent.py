@@ -26,6 +26,20 @@ class IsoEntropyAgent:
     - Prompts por fase
     - Telemetría mínima
     """
+    
+    # =========================================================
+    # PARÁMETROS CONFIGURABLES
+    # =========================================================
+    STABILITY_THRESHOLD = 0.05
+    MARGINAL_THRESHOLD = 0.15
+    FORCED_ATTEMPTS = 2
+    DELTA_K_STEP = 1.0
+    REPLICA_RUNS = 1000
+    
+    # Parámetros de accesibilidad estructural
+    FACTOR_MAX = 1.5  # K_min puede ser hasta 1.5x K_base
+    DELTA_K_TOLERABLE = 0.5  # Incremento absoluto máximo tolerable (bits)
+    MARGIN_MIN = 0.2  # Margen mínimo sobre I para considerar "holgado"
 
     # =========================================================
     # INICIALIZACIÓN
@@ -101,6 +115,38 @@ class IsoEntropyAgent:
         upper = (centre + adj) / denom
         
         return min(1.0, upper)  # Clamp a [0, 1]
+
+    def _is_structural_accessible(self, K_min_viable: float, K_base_initial: float, I: float, margin: float):
+        """
+        Verifica si K_min_viable es estructuralmente accesible desde K_base_initial.
+        
+        Criterios de accesibilidad estructural:
+        - K_min_viable / K_base_initial ≤ FACTOR_MAX (1.5 por defecto)
+        - O K_min_viable - K_base_initial ≤ DELTA_K_TOLERABLE (0.5 bits por defecto)
+        - Y margen (K_min_viable - I) debe ser suficientemente holgado (≥ 0.2 bits)
+        
+        Args:
+            K_min_viable: Capacidad mínima viable detectada
+            K_base_initial: Capacidad inicial del sistema (K0)
+            I: Entropía externa
+            margin: Margen de seguridad (K_min_viable - I)
+        
+        Returns:
+            tuple: (es_accesible: bool, razon: str)
+        """
+        if K_base_initial <= 0:
+            return False, "K_base_initial inválido"
+        
+        factor_ratio = K_min_viable / K_base_initial
+        delta_absolute = K_min_viable - K_base_initial
+        
+        if factor_ratio > self.FACTOR_MAX:
+            return False, f"K_min_viable {K_min_viable:.2f} requiere factor {factor_ratio:.2f}× sobre K_base {K_base_initial:.2f} (> {self.FACTOR_MAX})"
+        if delta_absolute > self.DELTA_K_TOLERABLE:
+            return False, f"Incremento {delta_absolute:.2f} bits sobre K_base {K_base_initial:.2f} excede tolerancia {self.DELTA_K_TOLERABLE:.2f}"
+        if margin < self.MARGIN_MIN:
+            return False, f"Margen {margin:.2f} bits insuficiente (< {self.MARGIN_MIN:.2f})"
+        return True, "Estructuralmente accesible"
 
     def compress_simulation_state(self, experiment_log: list) -> dict:
         """
@@ -327,7 +373,7 @@ Respuesta en formato JSON:
         context["colapso_promedio"] = sum(collapse_rates) / len(collapse_rates) if collapse_rates else 0
         
         # K VALORES TESTEADOS
-        tested_K_values = [exp.get("parametros_completos", {}).get("K_auditor", 0) for exp in self.experiment_log]
+        tested_K_values = [exp.get("hipotesis", {}).get("K", 0) for exp in self.experiment_log]
         context["K_min_testeado"] = min(tested_K_values) if tested_K_values else 0
         context["K_max_testeado"] = max(tested_K_values) if tested_K_values else 0
         
@@ -338,7 +384,8 @@ Respuesta en formato JSON:
             context["magnitud_cambio"] = abs(recent_trend)
         
         # ESTABILIDAD DETECTADA
-        stable_experiments = [exp for exp in self.experiment_log if exp.get("resultado", {}).get("tasa_de_colapso", 0) < 0.05]
+        stable_experiments = [exp for exp in self.experiment_log 
+                             if exp.get("resultado", {}).get("tasa_de_colapso", 0) < self.STABILITY_THRESHOLD]
         context["experimentos_estables"] = len(stable_experiments)
         context["tasa_estabilidad"] = len(stable_experiments) / len(self.experiment_log) if self.experiment_log else 0
         
@@ -377,6 +424,10 @@ Respuesta en formato JSON:
         stock_base = physical_state["stock"]
         liquidity_base = physical_state["liquidity"]
         capital_base = physical_state.get("capital", 1.0)
+        
+        # Guardar K_base_initial para comparación estructural
+        self.agent_state["K_base_initial"] = K_base
+        self._log(f"DEBUG: K_base_initial guardado = {K_base:.2f} bits")
 
         # 🔧 FIX: Crear contexto enriquecido para el LLM
         calibration_context = {
@@ -486,9 +537,9 @@ Parámetros Físicos Base:
                 # Calcular Wilson CI Upper Bound
                 ub95 = self._calculate_wilson_upper_bound(collapses_total, runs_total)
 
-                if colapso_pct < 0.05:
+                if colapso_pct < self.STABILITY_THRESHOLD:
                     emoji, status = "✅", "ESTABLE"
-                elif colapso_pct < 0.15:
+                elif colapso_pct < self.MARGINAL_THRESHOLD:
                     emoji, status = "⚠️", "MARGINAL"
                 else:
                     emoji, status = "❌", "COLAPSO"
@@ -523,10 +574,10 @@ Parámetros Físicos Base:
                 # adicionales con incrementos grandes de K (≥ +1.0 bits), validando estabilidad
                 # con criterios estadísticos (colapso < 5% Y UB95 < 5%).
                 # -----------------------------
-                stability_threshold = 0.05
-                marginal_threshold = 0.15
-                forced_attempts = 2
-                delta_K_step = 1.0
+                stability_threshold = self.STABILITY_THRESHOLD
+                marginal_threshold = self.MARGINAL_THRESHOLD
+                forced_attempts = self.FORCED_ATTEMPTS
+                delta_K_step = self.DELTA_K_STEP
                 
                 try:
                     # Condición de activación: colapso ≥ 99% y K_min_viable es None
@@ -534,12 +585,13 @@ Parámetros Físicos Base:
                         self._log("\n🔎 Colapso ≥ 99% sin K_min_viable detectado. Iniciando re-exploración forzada con validación estadística...")
                         
                         marginal_K_candidates = []  # Para réplicas posteriores
+                        K0 = self.agent_state.get("K_base_initial", K_base)
                         
                         for attempt in range(1, forced_attempts + 1):
-                            forced_K = max(0.1, min(10.0, K_base + attempt * delta_K_step))
-                            # Permitir saltos grandes para exploración forzada
-                            MAX_K_STEP = 0.75
-                            forced_K = max(K_base - MAX_K_STEP, min(forced_K, K_base + MAX_K_STEP * 4))
+                            forced_K = K0 + attempt * delta_K_step
+                            forced_K = max(0.1, min(10.0, forced_K))
+                            # Opcional: limitar por factor máximo o delta tolerable
+                            forced_K = min(forced_K, K0 * self.FACTOR_MAX, K0 + self.DELTA_K_TOLERABLE)
                             
                             self._log(f"   🧪 Intento forzado #{attempt}: probando K = {forced_K:.2f}")
 
@@ -580,12 +632,14 @@ Parámetros Físicos Base:
                             # Validar estabilidad estadística: colapso < 5% Y UB95 < 5%
                             if forced_collapse < stability_threshold and forced_ub95 < stability_threshold:
                                 self._log(f"   ✅ Estabilidad estadística confirmada con K={forced_K:.2f}. Marcando K_min_viable.")
+                                # Incrementar contador de réplicas confirmadas
+                                self.agent_state["replicas_confirmadas"] = self.agent_state.get("replicas_confirmadas", 0) + 1
+                                self._log(f"   DEBUG: replicas_confirmadas incrementado a {self.agent_state['replicas_confirmadas']}")
                                 # Actualizar K_min_viable si aplica
                                 if (self.agent_state.get("K_min_viable") is None) or (forced_K < self.agent_state.get("K_min_viable")):
                                     self.agent_state["K_min_viable"] = forced_K
                                     self.agent_state["margin"] = forced_K - I
-                                # Actualizar K_base para siguientes iteraciones
-                                K_base = forced_K
+                                # NO reasignar K_base aquí; actualizarlo solo cuando confirmes K_min_viable
                                 break
                             elif stability_threshold <= forced_collapse < marginal_threshold:
                                 # Caso marginal: guardar para réplicas
@@ -596,9 +650,6 @@ Parámetros Físicos Base:
                                     "theta": theta_f
                                 })
                                 self._log(f"   ⚠️ Resultado marginal detectado. K={forced_K:.2f} será evaluado con réplicas.")
-                            else:
-                                # Si no funcionó, actualizar K_base para siguiente intento forzado
-                                K_base = forced_K
                         
                         # -----------------------------
                         # LÓGICA DE RÉPLICAS PARA CASOS MARGINALES
@@ -609,11 +660,11 @@ Parámetros Físicos Base:
                                 replica_K = candidate["K"]
                                 replica_theta = candidate["theta"]
                                 
-                                self._log(f"   🔁 Réplica para K={replica_K:.2f} con runs=1000...")
-                                sim_replica = run_simulation(I, replica_K, replica_theta, runs=1000)
+                                self._log(f"   🔁 Réplica para K={replica_K:.2f} con runs={self.REPLICA_RUNS}...")
+                                sim_replica = run_simulation(I, replica_K, replica_theta, runs=self.REPLICA_RUNS)
                                 replica_collapse = sim_replica.get("tasa_de_colapso", 1.0)
-                                replica_collapses_total = sim_replica.get("collapses_total", int(replica_collapse * 1000))
-                                replica_runs = sim_replica.get("runs", 1000)
+                                replica_collapses_total = sim_replica.get("collapses_total", int(replica_collapse * self.REPLICA_RUNS))
+                                replica_runs = sim_replica.get("runs", self.REPLICA_RUNS)
                                 replica_ub95 = self._calculate_wilson_upper_bound(replica_collapses_total, replica_runs)
                                 
                                 # Registrar réplica
@@ -643,14 +694,13 @@ Parámetros Físicos Base:
                                 # Validar estabilidad estadística en réplica
                                 if replica_collapse < stability_threshold and replica_ub95 < stability_threshold:
                                     self._log(f"   ✅ Réplica confirma estabilidad estadística con K={replica_K:.2f}. Marcando K_min_viable.")
+                                    # Incrementar contador de réplicas confirmadas
+                                    self.agent_state["replicas_confirmadas"] = self.agent_state.get("replicas_confirmadas", 0) + 1
+                                    self._log(f"   DEBUG: replicas_confirmadas incrementado a {self.agent_state['replicas_confirmadas']}")
                                     if (self.agent_state.get("K_min_viable") is None) or (replica_K < self.agent_state.get("K_min_viable")):
                                         self.agent_state["K_min_viable"] = replica_K
                                         self.agent_state["margin"] = replica_K - I
-                                        self.agent_state["replicas_confirmadas"] = 1  # Primera réplica
-                                    elif abs(replica_K - self.agent_state.get("K_min_viable", 0)) < 0.01:
-                                        # Réplica del mismo K_min_viable
-                                        self.agent_state["replicas_confirmadas"] = self.agent_state.get("replicas_confirmadas", 0) + 1
-                                    K_base = replica_K
+                                    # NO reasignar K_base aquí
                                     break
                                 elif replica_collapse > marginal_threshold or replica_ub95 >= stability_threshold:
                                     self._log(f"   ❌ Réplica confirma fragilidad. K={replica_K:.2f} no es viable.")
@@ -666,9 +716,17 @@ Parámetros Físicos Base:
                 # Contar intentos forzados ejecutados
                 forced_executed = sum(1 for exp in self.experiment_log 
                                      if exp.get("label", "").startswith("forced"))
+                # Verificar si hay candidatos marginales o réplicas pendientes
+                has_marginal_candidates = any(
+                    exp.get("label") == "replica" or 
+                    (stability_threshold <= exp.get("resultado", {}).get("tasa_de_colapso", 0) < marginal_threshold)
+                    for exp in self.experiment_log
+                )
+                # Forzar CONCLUDE solo si: forced_executed >= forced_attempts Y no hay candidatos/réplicas Y K_min_viable is None
                 if (self.fsm.phase == AgentPhase.ORIENT and 
                     self.agent_state.get("K_min_viable") is None and
-                    forced_executed >= 2):
+                    forced_executed >= forced_attempts and
+                    not has_marginal_candidates):
                     self._log("\n🔚 Forzando transición a CONCLUDE: K_min_viable no detectado tras intentos forzados en fase ORIENT.")
                     # Forzar transición a CONCLUDE para generar reporte FRÁGIL
                     self.fsm.phase = AgentPhase.CONCLUDE
@@ -683,16 +741,15 @@ Parámetros Físicos Base:
 
                 # 🔧 FIX: Registrar K_min_viable en CUALQUIER fase si es estable estadísticamente
                 # Validar estabilidad: colapso < 5% Y UB95 < 5%
-                if colapso_pct < 0.05 and ub95 < 0.05:
+                if colapso_pct < self.STABILITY_THRESHOLD and ub95 < self.STABILITY_THRESHOLD:
+                    # Incrementar contador de réplicas confirmadas cuando se confirma estabilidad
+                    self.agent_state["replicas_confirmadas"] = self.agent_state.get("replicas_confirmadas", 0) + 1
+                    self._log(f"   DEBUG: replicas_confirmadas incrementado a {self.agent_state['replicas_confirmadas']}")
                     if (self.agent_state["K_min_viable"] is None or 
                         K < self.agent_state["K_min_viable"]):
                         self.agent_state["K_min_viable"] = K
                         self.agent_state["margin"] = K - I
-                        self.agent_state["replicas_confirmadas"] = 1  # Primera confirmación
                         self._log(f"   ✨ K mínimo viable detectado (estadísticamente confirmado): {K:.2f} bits (UB95={ub95:.1%})")
-                    elif abs(K - self.agent_state.get("K_min_viable", 0)) < 0.01:
-                        # Mismo K_min_viable, incrementar contador de réplicas
-                        self.agent_state["replicas_confirmadas"] = self.agent_state.get("replicas_confirmadas", 0) + 1
 
                 # Actualizar FSM con validación estadística
                 try:
@@ -818,7 +875,7 @@ Historial de Experimentos (resumido):
                 collapse_times = [
                     exp.get("resultado", {}).get("tiempo_promedio_colapso", 0)
                     for exp in all_experiments
-                    if exp.get("resultado", {}).get("tasa_de_colapso", 0) > 0.15
+                    if exp.get("resultado", {}).get("tasa_de_colapso", 0) > self.MARGINAL_THRESHOLD
                 ]
                 avg_collapse_time = (
                     sum(collapse_times) / len(collapse_times) 
@@ -845,38 +902,49 @@ Historial de Experimentos (resumido):
             # Determinar estado final según definiciones formales
             replicas_confirmadas = self.agent_state.get("replicas_confirmadas", 0)
             fsm_phase = self.fsm.phase
+            K_base_initial = self.agent_state.get("K_base_initial", K_base)
             
             if K_min is not None:
                 # Verificar que K_min tenga validación estadística
                 k_min_experiments = [exp for exp in all_experiments 
                                     if abs(exp["hipotesis"]["K"] - K_min) < 0.01]
                 k_min_statistically_stable = any(
-                    exp["resultado"]["tasa_de_colapso"] < 0.05 and 
-                    exp["resultado"].get("upper_ci95", 1.0) < 0.05
+                    exp["resultado"]["tasa_de_colapso"] < self.STABILITY_THRESHOLD and 
+                    exp["resultado"].get("upper_ci95", 1.0) < self.STABILITY_THRESHOLD
                     for exp in k_min_experiments
                 )
                 
-                # ROBUSTO solo si: K_min existe + FSM no en ORIENT + ≥2 réplicas confirmadas
+                # Verificar accesibilidad estructural
+                accessible, reason = self._is_structural_accessible(
+                    K_min, K_base_initial, I_base, margin or 0.0
+                )
+                self._log(f"DEBUG: Accesibilidad estructural de K_min={K_min:.2f}: {accessible} - {reason}")
+                
+                # ROBUSTO solo si: K_min existe + FSM no en ORIENT + ≥2 réplicas confirmadas + accesible estructuralmente
                 if (k_min_statistically_stable and 
                     fsm_phase != AgentPhase.ORIENT and 
-                    replicas_confirmadas >= 2):
+                    replicas_confirmadas >= 2 and 
+                    accessible):
                     estado_final = "✅ ROBUSTO"
+                elif k_min_statistically_stable and (not accessible):
+                    # MARGINAL si K_min existe pero NO es estructuralmente accesible
+                    estado_final = "⚠️ MARGINAL"
                 else:
-                    # MARGINAL si K_min existe pero no cumple criterios de ROBUSTO
+                    # MARGINAL si K_min existe pero no cumple otros criterios de ROBUSTO
                     estado_final = "⚠️ MARGINAL"
             elif min_attempts_for_fragile:
                 # FRÁGIL si: 1 inicial + ≥2 forzadas + ninguna cumple estabilidad + K_min_viable es None
                 # Verificar que ninguna simulación cumple estabilidad estadística
                 ninguna_estable = not any(
-                    exp["resultado"]["tasa_de_colapso"] < 0.05 and 
-                    exp["resultado"].get("upper_ci95", 1.0) < 0.05
+                    exp["resultado"]["tasa_de_colapso"] < self.STABILITY_THRESHOLD and 
+                    exp["resultado"].get("upper_ci95", 1.0) < self.STABILITY_THRESHOLD
                     for exp in all_experiments
                 )
                 if ninguna_estable:
                     estado_final = "❌ FRÁGIL"
                 else:
                     estado_final = "⚠️ MARGINAL"
-            elif max_collapse < 0.15 and max_ub95 < 0.15:
+            elif max_collapse < self.MARGINAL_THRESHOLD and max_ub95 < self.MARGINAL_THRESHOLD:
                 estado_final = "⚠️ MARGINAL"
             else:
                 # Caso por defecto: si no hay suficiente evidencia, MARGINAL
@@ -916,14 +984,21 @@ Historial de Experimentos (resumido):
 """
 
             if K_min is not None:
+                # Verificar accesibilidad estructural para el reporte
+                accessible, reason = self._is_structural_accessible(
+                    K_min, K_base_initial, I_base, margin or 0.0
+                )
+                
                 # Distinguir entre robustez actual vs. potencial
-                if max_collapse > 0.15:
+                if max_collapse > self.MARGINAL_THRESHOLD:
                     # Hubo colapsos previos altos - robustez potencial
                     final_report += f"""
 - **Región Estable Detectada (requiere aumentar K):** {K_min:.2f} bits
   - Aunque se observaron colapsos del {max_collapse:.1%} en configuraciones iniciales, el sistema presenta una región estable al aumentar K hasta {K_min:.2f} bits
   - Capacidad mínima requerida para mantener estabilidad (colapso < 5% y UB95 < 5%)
   - Réplicas independientes confirmadas: {replicas_confirmadas}
+  - **Accesibilidad Estructural:** {'✅ Accesible' if accessible else '⚠️ Requiere salto grande de K'}
+    - {reason}
 """
                     # Advertencia si FSM está en ORIENT
                     if fsm_phase == AgentPhase.ORIENT:
@@ -941,6 +1016,8 @@ Historial de Experimentos (resumido):
   - El sistema muestra estabilidad estructural en la configuración actual
   - Capacidad mínima requerida para mantener estabilidad (colapso < 5% y UB95 < 5%)
   - Réplicas independientes confirmadas: {replicas_confirmadas}
+  - **Accesibilidad Estructural:** {'✅ Accesible' if accessible else '⚠️ Requiere salto grande de K'}
+    - {reason}
 """
                     # Advertencia si FSM está en ORIENT
                     if fsm_phase == AgentPhase.ORIENT:
@@ -1005,7 +1082,7 @@ Historial de Experimentos (resumido):
                     k_val = exp["hipotesis"]["K"]
                     collapse = exp["resultado"]["tasa_de_colapso"]
                     ub95 = exp["resultado"].get("upper_ci95", collapse)
-                    estado = "✅" if collapse < 0.05 and ub95 < 0.05 else "⚠️" if collapse < 0.15 else "❌"
+                    estado = "✅" if collapse < self.STABILITY_THRESHOLD and ub95 < self.STABILITY_THRESHOLD else "⚠️" if collapse < self.MARGINAL_THRESHOLD else "❌"
                     label_info = f" ({exp.get('label', 'N/A')})" if exp.get('label') else ""
                     final_report += f"| {exp.get('ciclo', 'N/A')}{label_info} | {k_val:.2f} | {collapse:.1%} | {ub95:.1%} | {estado} |\n"
 
@@ -1038,7 +1115,7 @@ Historial de Experimentos (resumido):
             k_val = exp["hipotesis"]["K"]
             collapse = exp["resultado"]["tasa_de_colapso"]
             ub95 = exp["resultado"].get("upper_ci95", collapse)  # Fallback a colapso si no hay UB95
-            estado = "✅" if collapse < 0.05 and ub95 < 0.05 else "⚠️" if collapse < 0.15 else "❌"
+            estado = "✅" if collapse < self.STABILITY_THRESHOLD and ub95 < self.STABILITY_THRESHOLD else "⚠️" if collapse < self.MARGINAL_THRESHOLD else "❌"
             table += f"| {exp.get('ciclo', 'N/A')} | {k_val:.2f} | {collapse:.1%} | {ub95:.1%} | {estado} |\n"
         
         return table
