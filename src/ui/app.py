@@ -6,6 +6,8 @@ import pandas as pd
 import plotly.express as px
 import threading
 from datetime import datetime
+import os
+from dotenv import load_dotenv
 
 # Manejo de importación defensivo
 try:
@@ -63,15 +65,8 @@ def render_sidebar():
         st.title("Configuración")
         st.markdown("---")
 
-        api_key = st.text_input(
-            "🔑 Gemini API Key",
-            type="password",
-            placeholder="AIzaSy...",
-            help="Necesaria para el razonamiento del agente."
-        )
-
         st.subheader("Parámetros Físicos")
-        
+
         volatilidad = st.selectbox(
             "🌪️ Volatilidad (Entropía I)",
             ["Baja (Estable)", "Media (Estacional)", "Alta (Caótica)"],
@@ -94,12 +89,17 @@ def render_sidebar():
 
         st.markdown("---")
         st.caption("v2.3 | Powered by Gemini 3 Pro")
-        
-        return api_key, volatilidad, rigidez, colchon
+
+        return volatilidad, rigidez, colchon
 
 def main():
     setup_page()
-    api_key, volatilidad, rigidez, colchon = render_sidebar()
+
+    # Cargar variables de entorno
+    load_dotenv()
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    volatilidad, rigidez, colchon = render_sidebar()
 
     # --- HERO SECTION ---
     col_logo, col_title = st.columns([1, 5])
@@ -138,6 +138,9 @@ def main():
 
     # --- EXECUTION LOGIC ---
     if start_btn:
+        if not api_key:
+            st.toast("⚠️ API key no configurada en .env. Configure GEMINI_API_KEY.", icon="⚠️")
+            return
         if not user_input.strip():
             st.toast("⚠️ Por favor describa la operación primero.", icon="⚠️")
             return
