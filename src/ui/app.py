@@ -158,7 +158,12 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    
+            return api_key, volatilidad, rigidez, colchon
+
+     setup_page()
+    api_key, volatilidad, rigidez, colchon = render_sidebar()
+
+
     # CONFIGURACIÓN AVANZADA
     st.subheader("🔧 Opciones Avanzadas")
     
