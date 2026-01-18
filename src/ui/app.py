@@ -453,4 +453,3 @@ with col_footer3:
     st.caption("[GitHub](https://github.com/RogelioAlcantarRangel/Iso-Entropy)")
 
 if __name__ == "__main__":
-    main()
