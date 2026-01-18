@@ -106,12 +106,22 @@ with st.sidebar:
     # Logo y título
     st.image(
         "https://img.icons8.com/fluency/96/system-diagnostic.png",
-        width=60
+        width=80
     )
     st.title("ISO-ENTROPÍA")
     st.caption("v2.3 - Auditor Autónomo")
     
     st.markdown("---")
+
+     # --- INPUT DE API KEY RESTAURADO ---
+    api_key_input = st.text_input(
+        "🔑 Gemini API Key",
+        type="password",
+        placeholder="Pegar AIzaSy... aquí",
+        help="Si se deja vacío, se usará la clave del archivo .env",
+        value="" 
+    )
+    # -----------------------------------
     
     # PARÁMETROS DEL SISTEMA
     st.subheader("⚙️ Parámetros del Sistema")
@@ -393,6 +403,7 @@ if start_btn:
         label="📥 Descargar Reporte (Markdown)",
         data=result,
         file_name=f"auditoria_iso_entropia_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+        mime="text/markdown"
     )
     
     # INFORMACIÓN TÉCNICA
@@ -420,8 +431,8 @@ if start_btn:
                         "Colapso": f"{exp['resultado']['tasa_de_colapso']:.1%}"
                     })
                 
-                import pandas as pd
                 df = pd.DataFrame(hist_data)
+                # Uso de use_container_width para que se vea bien
                 st.dataframe(df, use_container_width=True)
 
 # ============================================================================
@@ -440,3 +451,6 @@ with col_footer2:
 
 with col_footer3:
     st.caption("[GitHub](https://github.com/RogelioAlcantarRangel/Iso-Entropy)")
+
+if __name__ == "__main__":
+    main()
