@@ -15,6 +15,7 @@ from .grounding import ground_inputs
 from .fsm import IsoEntropyFSM, AgentPhase
 from .prompt_templates import build_prompt_for_phase
 from .telemetry import build_llm_signal
+from .constraints import apply_hard_rules, HardConstraintViolation
 
 load_dotenv()
 
@@ -1323,3 +1324,372 @@ Historial de Experimentos (resumido):
             table += f"| {exp.get('ciclo', 'N/A')} | {k_val:.2f} | {collapse:.1%} | {ub95:.1%} | {ii if isinstance(ii, str) else f'{ii:.2f}'} | {de if isinstance(de, str) else f'{de:.2f}'} | {estado} |\n"
         
         return table
+
+
+# Nueva clase IsoEntropyAgent para single-turn agent con function calling automático
+class IsoEntropySingleTurnAgent:
+    """
+    Agente Iso-Entropy Single-Turn con Function Calling Automático usando Gemini 3 Flash.
+
+    Esta clase implementa un agente autónomo que ejecuta una única llamada a la API
+    con function calling automático para analizar sistemas y generar reportes.
+    """
+
+    def __init__(self, model_name="gemini-3-flash-preview", api_key=None):
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        self.model_name = model_name
+
+        if self.api_key:
+            try:
+                self.client = genai.Client(api_key=self.api_key)
+            except Exception as e:
+                raise RuntimeError(f"Error inicializando cliente Gemini: {e}")
+        else:
+            raise ValueError("GEMINI_API_KEY no encontrada en variables de entorno")
+
+        # Log de telemetría
+        self.telemetry_log = []
+
+    def _log_telemetry(self, event: str, data: dict = None):
+        """Registra evento en telemetría."""
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "event": event,
+            "data": data or {}
+        }
+        self.telemetry_log.append(entry)
+        print(f"[TELEMETRY] {event}: {data}")
+
+    def audit_system(self, user_input: str, volatilidad: str, colchon: int, rigidez: str) -> dict:
+        """
+        Ejecuta auditoría single-turn con function calling automático.
+
+        Args:
+            user_input: Descripción del contexto del usuario
+            volatilidad: Nivel de volatilidad ("Baja (Estable)", "Media (Estacional)", "Alta (Caótica)")
+            colchon: Meses de colchón financiero
+            rigidez: Nivel de rigidez ("Baja (Automatizada)", "Media (Estándar)", "Alta (Manual/Burocrático)")
+
+        Returns:
+            dict: {
+                "reporte_final": str,
+                "telemetria": list,
+                "error": str (opcional)
+            }
+        """
+        try:
+            self._log_telemetry("audit_start", {
+                "user_input": user_input,
+                "volatilidad": volatilidad,
+                "colchon": colchon,
+                "rigidez": rigidez
+            })
+
+            # Definir herramientas nativas para function calling
+            tools = [types.Tool(
+                function_declarations=[
+                    types.FunctionDeclaration(
+                        name="ground_inputs",
+                        description="Convierte inputs humanos a parámetros físicos",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "volatilidad": types.Schema(type=types.Type.STRING),
+                                "rigidez": types.Schema(type=types.Type.STRING),
+                                "colchon_meses": types.Schema(type=types.Type.INTEGER)
+                            },
+                            required=["volatilidad", "rigidez", "colchon_meses"]
+                        )
+                    ),
+                    types.FunctionDeclaration(
+                        name="apply_hard_rules",
+                        description="Aplica reglas físicas absolutas",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "volatilidad": types.Schema(type=types.Type.STRING),
+                                "rigidez": types.Schema(type=types.Type.STRING),
+                                "colchon_meses": types.Schema(type=types.Type.INTEGER),
+                                "params": types.Schema(type=types.Type.OBJECT)
+                            },
+                            required=["volatilidad", "rigidez", "colchon_meses", "params"]
+                        )
+                    ),
+                    types.FunctionDeclaration(
+                        name="calculate_collapse_threshold",
+                        description="Calcula umbral de colapso θ_max",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "stock_ratio": types.Schema(type=types.Type.NUMBER),
+                                "capital_ratio": types.Schema(type=types.Type.NUMBER),
+                                "liquidity": types.Schema(type=types.Type.NUMBER)
+                            },
+                            required=["stock_ratio", "capital_ratio", "liquidity"]
+                        )
+                    ),
+                    types.FunctionDeclaration(
+                        name="run_simulation",
+                        description="Ejecuta simulación Monte Carlo",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "I": types.Schema(type=types.Type.NUMBER),
+                                "K": types.Schema(type=types.Type.NUMBER),
+                                "theta_max": types.Schema(type=types.Type.NUMBER),
+                                "runs": types.Schema(type=types.Type.INTEGER, default=500)
+                            },
+                            required=["I", "K", "theta_max"]
+                        )
+                    ),
+                    types.FunctionDeclaration(
+                        name="build_llm_signal",
+                        description="Construye señal de telemetría resumida",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "experiment_log": types.Schema(
+                                    type=types.Type.ARRAY,
+                                    items=types.Schema(type=types.Type.OBJECT)
+                                )
+                            },
+                            required=["experiment_log"]
+                        )
+                    )
+                ]
+            )]
+
+            # Prompt maestro
+            prompt = f"""
+Eres un Auditor de Entropía Autónoma especializado en termodinámica de la información.
+Tu tarea es analizar el sistema del usuario, ejecutar simulaciones necesarias ajustando K hasta estabilidad o máximo 5 iteraciones, y generar un reporte final completo con traducción semántica a lenguaje de negocio.
+
+CONTEXTO DEL USUARIO:
+{user_input}
+
+CALIBRACIÓN DEL SISTEMA:
+- Volatilidad: {volatilidad}
+- Rigidez Operativa: {rigidez}
+- Colchón Financiero: {colchon} meses
+
+INSTRUCCIONES DE EJECUCIÓN:
+1. Analiza el contexto del usuario y calibra parámetros físicos usando ground_inputs
+2. Aplica reglas físicas duras con apply_hard_rules
+3. Ejecuta simulación base para estado inicial
+4. Itera internamente máximo 5 veces ajustando K hasta encontrar estabilidad (colapso < 5%) o insolvencia total
+5. Traduce resultados técnicos a urgencias médicas, stocks de inventario, riesgo operativo
+6. Genera reporte final completo con diagnóstico, recomendaciones y métricas
+
+HERRAMIENTAS DISPONIBLES:
+- ground_inputs: Convierte inputs humanos a parámetros físicos
+- apply_hard_rules: Aplica constraints físicos absolutos
+- calculate_collapse_threshold: Calcula umbral de colapso θ_max
+- run_simulation: Ejecuta simulación Monte Carlo
+- build_llm_signal: Construye señal de telemetría resumida
+
+Sé autónomo y ejecuta todas las herramientas necesarias. Cuando tengas suficiente evidencia, genera el reporte final.
+"""
+
+            # Configuración para function calling
+            config = types.GenerateContentConfig(
+                temperature=0.1,
+                thinking_config=types.ThinkingConfig(
+                    include_thoughts=True,
+                    thinking_level="low"
+                ),
+                tools=tools
+            )
+
+            self._log_telemetry("api_call_start")
+
+            # Loop para manejar function calling
+            conversation = [prompt]
+            max_iterations = 10
+            iteration = 0
+
+            while iteration < max_iterations:
+                iteration += 1
+                self._log_telemetry("api_call_iteration", {"iteration": iteration})
+
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=conversation,
+                    config=config
+                )
+
+                # Verificar si hay llamadas a funciones
+                if hasattr(response, 'candidates') and response.candidates:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        function_calls = []
+                        text_parts = []
+
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'function_call') and part.function_call:
+                                function_calls.append(part.function_call)
+                            elif hasattr(part, 'text') and part.text:
+                                text_parts.append(part.text)
+
+                        # Si hay llamadas a funciones, ejecutarlas
+                        if function_calls:
+                            self._log_telemetry("function_calls_detected", {"count": len(function_calls)})
+                            function_results = []
+
+                            for call in function_calls:
+                                result = self._execute_function_call(call)
+                                function_results.append(types.Part(
+                                    function_response=types.FunctionResponse(
+                                        name=call.name,
+                                        response=result
+                                    )
+                                ))
+
+                            # Agregar resultados al conversation
+                            conversation.append(types.Content(
+                                role="user",
+                                parts=function_results
+                            ))
+                            continue
+
+                        # Si no hay llamadas a funciones, es la respuesta final
+                        else:
+                            break
+
+            self._log_telemetry("api_call_end", {"response_length": len(response.text) if response.text else 0})
+
+            # Extraer pensamientos
+            thoughts = self._extract_thoughts(response)
+
+            # Procesar respuesta final
+            final_report = self._process_final_response(response, thoughts)
+
+            self._log_telemetry("audit_complete", {"report_length": len(final_report)})
+
+            return {
+                "reporte_final": final_report,
+                "telemetria": self.telemetry_log
+            }
+
+        except Exception as e:
+            error_msg = f"Error en auditoría: {str(e)}"
+            self._log_telemetry("audit_error", {"error": error_msg})
+            return {
+                "reporte_final": f"Error técnico: {error_msg}",
+                "telemetria": self.telemetry_log,
+                "error": error_msg
+            }
+
+    def _extract_thoughts(self, response) -> str:
+        """Extrae pensamientos del response de Gemini."""
+        try:
+            if hasattr(response, 'candidates') and response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'thought') and part.thought:
+                        if hasattr(part.thought, 'text'):
+                            return part.thought.text
+                        elif isinstance(part.thought, str):
+                            return part.thought
+                        elif hasattr(part.thought, '__str__'):
+                            return str(part.thought)
+            return "Pensamientos no disponibles"
+        except Exception as e:
+            return f"Error extrayendo pensamientos: {e}"
+
+    def _process_final_response(self, response, thoughts: str) -> str:
+        """Procesa la respuesta final y genera reporte completo."""
+        base_report = response.text or "No se generó respuesta"
+
+        # Agregar sección de pensamientos si están disponibles
+        if thoughts and thoughts != "Pensamientos no disponibles":
+            base_report = f"## Pensamientos del Auditor\n\n{thoughts}\n\n---\n\n{base_report}"
+
+        # Agregar metadatos
+        final_report = f"""# Auditoría Iso-Entropy - Single-Turn Agent
+
+{base_report}
+
+---
+*Generado por IsoEntropySingleTurnAgent*
+*Modelo: {self.model_name}*
+*Timestamp: {datetime.now().isoformat()}*
+"""
+
+        return final_report
+
+    def _execute_function_call(self, function_call):
+        """Ejecuta una llamada a función basada en el nombre y argumentos."""
+        name = function_call.name
+        args = function_call.args if hasattr(function_call, 'args') else {}
+
+        self._log_telemetry("executing_function", {"name": name, "args": args})
+
+        try:
+            if name == "ground_inputs":
+                result = self._tool_ground_inputs(**args)
+            elif name == "apply_hard_rules":
+                result = self._tool_apply_hard_rules(**args)
+            elif name == "calculate_collapse_threshold":
+                result = self._tool_calculate_collapse_threshold(**args)
+            elif name == "run_simulation":
+                result = self._tool_run_simulation(**args)
+            elif name == "build_llm_signal":
+                result = self._tool_build_llm_signal(**args)
+            else:
+                result = {"error": f"Función desconocida: {name}"}
+
+            self._log_telemetry("function_executed", {"name": name, "success": True})
+            return result
+
+        except Exception as e:
+            error_result = {"error": f"Error ejecutando {name}: {str(e)}"}
+            self._log_telemetry("function_executed", {"name": name, "success": False, "error": str(e)})
+            return error_result
+
+    # =================================================================
+    # HERRAMIENTAS NATIVAS PARA FUNCTION CALLING
+    # =================================================================
+
+    def _tool_ground_inputs(self, volatilidad: str, rigidez: str, colchon_meses: int):
+        """Herramienta: Convierte inputs humanos a parámetros físicos."""
+        self._log_telemetry("tool_call", {"tool": "ground_inputs", "args": locals()})
+        result = ground_inputs(volatilidad, rigidez, colchon_meses)
+        self._log_telemetry("tool_result", {"tool": "ground_inputs", "result": result})
+        return result
+
+    def _tool_apply_hard_rules(self, volatilidad: str, rigidez: str, colchon_meses: int, params: dict):
+        """Herramienta: Aplica reglas físicas absolutas."""
+        self._log_telemetry("tool_call", {"tool": "apply_hard_rules", "args": locals()})
+        try:
+            result = apply_hard_rules(
+                volatilidad=volatilidad,
+                rigidez=rigidez,
+                colchon_meses=colchon_meses,
+                params=params
+            )
+            self._log_telemetry("tool_result", {"tool": "apply_hard_rules", "result": result})
+            return result
+        except HardConstraintViolation as e:
+            error_result = {"error": str(e), "action": "TERMINATE"}
+            self._log_telemetry("tool_result", {"tool": "apply_hard_rules", "result": error_result})
+            return error_result
+
+    def _tool_calculate_collapse_threshold(self, stock_ratio: float, capital_ratio: float, liquidity: float):
+        """Herramienta: Calcula umbral de colapso θ_max."""
+        self._log_telemetry("tool_call", {"tool": "calculate_collapse_threshold", "args": locals()})
+        result = calculate_collapse_threshold(stock_ratio, capital_ratio, liquidity)
+        self._log_telemetry("tool_result", {"tool": "calculate_collapse_threshold", "result": result})
+        return result
+
+    def _tool_run_simulation(self, I: float, K: float, theta_max: float, runs: int = 500):
+        """Herramienta: Ejecuta simulación Monte Carlo."""
+        self._log_telemetry("tool_call", {"tool": "run_simulation", "args": locals()})
+        result = run_simulation(I, K, theta_max, runs)
+        self._log_telemetry("tool_result", {"tool": "run_simulation", "result": result})
+        return result
+
+    def _tool_build_llm_signal(self, experiment_log: list):
+        """Herramienta: Construye señal de telemetría resumida."""
+        self._log_telemetry("tool_call", {"tool": "build_llm_signal", "args": {"experiment_log_length": len(experiment_log)}})
+        result = build_llm_signal(experiment_log)
+        self._log_telemetry("tool_result", {"tool": "build_llm_signal", "result": result})
+        return result

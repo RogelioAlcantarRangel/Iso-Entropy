@@ -11,7 +11,7 @@ Módulos principales:
 - prompt_templates: Prompts inteligentes por fase
 """
 
-from .agent import IsoEntropyAgent
+from .agent import IsoEntropyAgent, IsoEntropySingleTurnAgent
 from .physics import run_simulation, calculate_collapse_threshold
 from .fsm import IsoEntropyFSM, AgentPhase
 from .constraints import apply_hard_rules
@@ -21,6 +21,7 @@ from .prompt_templates import build_prompt_for_phase
 
 __all__ = [
     "IsoEntropyAgent",
+    "IsoEntropySingleTurnAgent",
     "run_simulation",
     "calculate_collapse_threshold",
     "IsoEntropyFSM",

@@ -4,8 +4,8 @@
 streamlit>=1.28.0
 python-dotenv>=0.21.0
 
-# AI Engine (Gemini 2.5 Flash Lite)
-google-genai>=0.1.0
+# AI Engine (Gemini 3 Flash)
+google-genai>=1.0.0
 
 # Data Processing & Visualization
 pandas>=2.0.0

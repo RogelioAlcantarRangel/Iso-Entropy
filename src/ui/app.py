@@ -14,7 +14,7 @@ try:
     root_dir = Path(__file__).parent.parent.parent
     if str(root_dir) not in sys.path:
         sys.path.insert(0, str(root_dir))
-    from src.core.agent import IsoEntropyAgent
+    from src.core.agent import IsoEntropySingleTurnAgent
 except ImportError as e:
     st.error(f"❌ Error de Importación: {e}")
     st.stop()
@@ -145,42 +145,29 @@ def main():
         # Contenedores para actualización en tiempo real
         st.divider()
         st.subheader("3. Análisis en Tiempo Real")
-        
-        status_container = st.status("🧠 Inicializando Agente Iso-Entropy...", expanded=True)
-        col_metrics, col_logs = st.columns([1, 2])
-        
-        with col_metrics:
-            metric_placeholder = st.empty()
-        
-        with col_logs:
-            log_placeholder = st.empty()
-            thought_placeholder = st.empty()
+
+        status_container = st.status("🧠 Inicializando Agente Iso-Entropy Single-Turn...", expanded=True)
 
         # Variables compartidas para el thread
         shared_state = {
-            "logs": [],
-            "thoughts": [],
             "reporte": None,
             "error": None,
-            "completo": False,
-            "ciclo": 0
+            "telemetria": [],
+            "completo": False
         }
-
-        def capturar_log(mensaje):
-            shared_state["logs"].append(mensaje)
-            # Detectar pensamientos en el log (si vienen del print en agent.py)
-            if "🧠 PENSAMIENTO" in mensaje:
-                # Limpiar un poco el mensaje para la UI
-                clean_thought = mensaje.replace("🧠 PENSAMIENTO (Chain-of-Thought):", "").strip()
-                shared_state["thoughts"].append(clean_thought)
 
         # Ejecutar agente en hilo
         def run_audit():
             try:
-                agent = IsoEntropyAgent(log_callback=capturar_log, api_key=api_key if api_key else None)
+                agent = IsoEntropySingleTurnAgent(api_key=api_key if api_key else None)
                 # Guardamos referencia al agente para sacar telemetría después
-                shared_state["agent_ref"] = agent 
-                shared_state["reporte"] = agent.audit_system(user_input, volatilidad, colchon, rigidez)
+                shared_state["agent_ref"] = agent
+                result = agent.audit_system(user_input, volatilidad, colchon, rigidez)
+                if "error" in result:
+                    shared_state["error"] = result["error"]
+                else:
+                    shared_state["reporte"] = result["reporte_final"]
+                    shared_state["telemetria"] = result.get("telemetria", [])
             except Exception as e:
                 shared_state["error"] = str(e)
             finally:
@@ -189,34 +176,10 @@ def main():
         thread = threading.Thread(target=run_audit, daemon=True)
         thread.start()
 
-        # Loop de actualización de UI
+        # Esperar a que el agente complete (single-turn es rápido)
         while not shared_state["completo"]:
-            # Actualizar Logs
-            if shared_state["logs"]:
-                last_logs = shared_state["logs"][-3:] # Mostrar solo los últimos
-                log_placeholder.code("\n".join(last_logs), language="text")
-                
-                # Detectar ciclo para la barra de estado
-                for l in reversed(shared_state["logs"]):
-                    if "CICLO DE PENSAMIENTO #" in l:
-                        try:
-                            cycle_num = l.split("#")[1].strip()
-                            status_container.update(label=f"🔄 Ejecutando Ciclo {cycle_num} (Simulación + Razonamiento)...", state="running")
-                        except: pass
-                        break
-
-            # Actualizar Pensamiento (El "Cerebro")
-            if shared_state["thoughts"]:
-                last_thought = shared_state["thoughts"][-1]
-                with thought_placeholder.container():
-                    st.markdown(f"""
-                    <div style='background-color: #262730; padding: 10px; border-radius: 5px; border-left: 3px solid #9b59b6; font-size: 0.9em;'>
-                        <span style='color: #9b59b6; font-weight: bold;'>🧠 Gemini Thinking:</span><br>
-                        {last_thought[:300]}...
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            time.sleep(0.5)
+            status_container.update(label="🔄 Ejecutando análisis single-turn...", state="running")
+            time.sleep(1)
 
         thread.join()
         status_container.update(label="✅ Auditoría Completada", state="complete", expanded=False)
@@ -224,53 +187,48 @@ def main():
         # --- RESULTADOS FINALES ---
         if shared_state["error"]:
             st.error(f"❌ Error Crítico: {shared_state['error']}")
-        
+
         elif shared_state["reporte"]:
             agent = shared_state.get("agent_ref")
-            
-            # 1. DASHBOARD DE MÉTRICAS (KPIs)
+
+            # 1. DASHBOARD DE MÉTRICAS (KPIs) - Simplificado para single-turn
             st.divider()
             st.subheader("4. Resultados del Diagnóstico")
-            
-            # Calcular métricas finales
-            if agent and agent.experiment_log:
-                valid_logs = [e for e in agent.experiment_log if e.get("resultado") and e.get("hipotesis")]
-                if not valid_logs:
-                    ii, deuda, colapso = 0, 0, 0
-                else:
-                    last_valid = valid_logs[-1]
-                    ii = last_valid.get("resultado", {}).get("insolvencia_informacional", 0)
-                    deuda = last_valid.get("resultado", {}).get("deuda_entropica_residual", 0)
-                    colapso = last_valid.get("resultado", {}).get("tasa_de_colapso", 0)
+
+            # KPIs básicos basados en telemetría
+            telemetria = shared_state.get("telemetria", [])
+            if telemetria:
+                # Contar llamadas a funciones y tiempo de ejecución
+                function_calls = sum(1 for t in telemetria if t.get("event") == "function_executed")
+                audit_duration = "Completo"  # Simplificado
 
                 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-                
+
                 kpi1.metric(
-                    "Insolvencia (I/K)", 
-                    f"{ii:.2f}", 
-                    delta="-Crítico" if ii > 1 else "Estable", 
-                    delta_color="inverse"
+                    "Funciones Ejecutadas",
+                    f"{function_calls}",
+                    help="Número de herramientas utilizadas por el agente"
                 )
                 kpi2.metric(
-                    "Prob. Colapso", 
-                    f"{colapso:.1%}", 
-                    delta="-Alto Riesgo" if colapso > 0.1 else "Seguro",
-                    delta_color="inverse"
+                    "Estado",
+                    "✅ Completo",
+                    delta="Exitoso",
+                    delta_color="normal"
                 )
                 kpi3.metric(
-                    "Deuda Entrópica", 
-                    f"{deuda:.2f} bits", 
-                    help="Acumulación de desorden no procesado"
+                    "Duración",
+                    audit_duration,
+                    help="Tiempo total de análisis"
                 )
                 kpi4.metric(
-                    "Horizonte", 
-                    "6-12 Meses" if colapso < 0.2 else "< 3 Meses",
-                    delta="Alerta" if colapso > 0.2 else "Normal",
-                    delta_color="inverse"
+                    "Modo",
+                    "Single-Turn",
+                    delta="Optimizado",
+                    delta_color="normal"
                 )
 
             # 2. TABS DE DETALLE
-            tab_report, tab_telemetry, tab_charts = st.tabs(["📄 Reporte Ejecutivo", "🧠 Lógica del Agente", "📈 Gráficas de Simulación"])
+            tab_report, tab_telemetry = st.tabs(["📄 Reporte Ejecutivo", "🧠 Telemetría del Agente"])
 
             with tab_report:
                 st.markdown(shared_state["reporte"])
@@ -281,46 +239,14 @@ def main():
                 )
 
             with tab_telemetry:
-                st.info("Traza completa de razonamiento y decisiones del Agente.")
-                for i, thought in enumerate(shared_state["thoughts"]):
-                    with st.expander(f"💭 Pensamiento Ciclo {i+1}"):
-                        st.write(thought)
-                
-                with st.expander("🔍 JSON Crudo de Experimentos"):
-                    st.json(agent.experiment_log)
-
-            with tab_charts:
-                if agent and agent.experiment_log:
-                    try:
-                        # Filtrar logs válidos (no comprimidos) con validación defensiva
-                        valid_logs = [
-                            e for e in agent.experiment_log 
-                            if e.get("resultado") and e.get("hipotesis")
-                        ]
-                        if valid_logs:
-                            df = pd.DataFrame([
-                                {
-                                    "Ciclo": str(e.get("ciclo", "N/A")),
-                                    "K (Capacidad)": e.get("hipotesis", {}).get("K", 0.0),
-                                    "Colapso (%)": e.get("resultado", {}).get("tasa_de_colapso", 0.0) * 100,
-                                    "Deuda Entrópica": e.get("resultado", {}).get("deuda_entropica_residual", 0.0)
-                                } for e in valid_logs
-                            ])
-                            
-                            st.markdown("#### Evolución de la Estabilidad")
-                            fig = px.line(df, x="Ciclo", y="Colapso (%)", markers=True, title="Riesgo de Colapso por Iteración")
-                            fig.add_hline(y=5, line_dash="dash", line_color="green", annotation_text="Umbral Seguro")
-                            st.plotly_chart(fig, use_container_width=True)
-
-                            col_chart1, col_chart2 = st.columns(2)
-                            with col_chart1:
-                                fig2 = px.bar(df, x="Ciclo", y="K (Capacidad)", title="Ajustes de Capacidad (K)")
-                                st.plotly_chart(fig2, use_container_width=True)
-                            with col_chart2:
-                                fig3 = px.area(df, x="Ciclo", y="Deuda Entrópica", title="Acumulación de Deuda", color_discrete_sequence=["#FF4B4B"])
-                                st.plotly_chart(fig3, use_container_width=True)
-                    except Exception as e:
-                        st.warning(f"No se pudieron generar gráficas: {e}")
+                st.info("Traza completa de ejecución y telemetría del Agente Single-Turn.")
+                telemetria = shared_state.get("telemetria", [])
+                if telemetria:
+                    for entry in telemetria:
+                        with st.expander(f"📊 {entry['event']} - {entry['timestamp'][:19]}"):
+                            st.json(entry.get("data", {}))
+                else:
+                    st.write("No hay datos de telemetría disponibles.")
 
 if __name__ == "__main__":
     main()
