@@ -1,255 +1,441 @@
-# src/ui/app.py
+# src/ui/app.py - Streamlit UI para Iso-Entropy Auditor Autónomo
 
 import streamlit as st
-import time
-import pandas as pd
-import plotly.express as px
-import threading
-from datetime import datetime
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Manejo de importación defensivo
+# ============================================================================
+# CONFIGURACIÓN INICIAL
+# ============================================================================
+
+# Cargar variables de entorno
+load_dotenv()
+
+# Configuración de página (DEBE SER LO PRIMERO)
+st.set_page_config(
+    page_title="Iso-Entropy | Auditoría Autónoma",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        "Get Help": "https://github.com/RogelioAlcantarRangel/Iso-Entropy",
+        "Report a bug": "https://github.com/RogelioAlcantarRangel/Iso-Entropy/issues",
+        "About": "ISO-ENTROPÍA v2.3 - Auditor de Fragilidad Estructural"
+    }
+)
+
+# ============================================================================
+# CSS PERSONALIZADO
+# ============================================================================
+
+st.markdown("""
+    <style>
+    /* Tema dark profesional */
+    .main {
+        background-color: #0E1117;
+        color: #E6EDF3;
+    }
+    
+    /* Títulos */
+    h1, h2, h3 {
+        color: #FAFAFA;
+        font-weight: 700;
+    }
+    
+    /* Métricas */
+    .stMetric {
+        background-color: #262730;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #41444C;
+    }
+    
+    /* Boxes de éxito */
+    .success-box {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background-color: #1c4f2e;
+        color: #aaffaa;
+        border: 1px solid #2e7d32;
+    }
+    
+    /* Boxes de advertencia */
+    .warning-box {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background-color: #4a3a1a;
+        color: #ffcc99;
+        border: 1px solid #8b6f47;
+    }
+    
+    /* Divider */
+    hr {
+        border: 1px solid #41444C;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #262730;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ============================================================================
+# IMPORTAR AGENTE
+# ============================================================================
+
 try:
-    import sys
-    from pathlib import Path
     root_dir = Path(__file__).parent.parent.parent
     if str(root_dir) not in sys.path:
         sys.path.insert(0, str(root_dir))
-    from src.core.agent import IsoEntropySingleTurnAgent
+    
+    from src.core.agent import IsoEntropyAgent
 except ImportError as e:
-    st.error(f"❌ Error de Importación: {e}")
+    st.error(f"❌ Error de importación: {e}")
     st.stop()
 
-# --- CONFIGURACIÓN DE PÁGINA Y ESTILOS ---
-def setup_page():
-    st.set_page_config(
-        page_title="Iso-Entropy | Auditoría Forense AI",
-        page_icon="⚡",
-        layout="wide",
-        initial_sidebar_state="expanded"
+# ============================================================================
+# SIDEBAR - CONFIGURACIÓN
+# ============================================================================
+
+with st.sidebar:
+    # Logo y título
+    st.image(
+        "https://img.icons8.com/fluency/96/system-diagnostic.png",
+        width=60
+    )
+    st.title("ISO-ENTROPÍA")
+    st.caption("v2.3 - Auditor Autónomo")
+    
+    st.markdown("---")
+    
+    # PARÁMETROS DEL SISTEMA
+    st.subheader("⚙️ Parámetros del Sistema")
+    
+    volatilidad = st.selectbox(
+        "🌪️ Volatilidad (Entropía Externa I)",
+        options=[
+            "Baja (Estable)",
+            "Media (Estacional)",
+            "Alta (Caótica)"
+        ],
+        index=1,
+        help="Nivel de caos e incertidumbre en el entorno del sistema. Afecta directamente a I (Entropía Externa)."
     )
     
-    # CSS Personalizado para look "Cyber-Professional"
-    st.markdown("""
-        <style>
-        .main {
-            background-color: #0E1117;
-        }
-        .stMetric {
-            background-color: #262730;
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #41444C;
-        }
-        h1, h2, h3 {
-            color: #FAFAFA;
-        }
-        .highlight {
-            color: #FF4B4B;
-            font-weight: bold;
-        }
-        .success-box {
-            padding: 1rem;
-            border-radius: 0.5rem;
-            background-color: #1c4f2e;
-            color: #aaffaa;
-            border: 1px solid #2e7d32;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-def render_sidebar():
-    with st.sidebar:
-        st.image("https://img.icons8.com/fluency/96/system-diagnostic.png", width=60)
-        st.title("Configuración")
-        st.markdown("---")
-
-        st.subheader("Parámetros Físicos")
-
-        volatilidad = st.selectbox(
-            "🌪️ Volatilidad (Entropía I)",
-            ["Baja (Estable)", "Media (Estacional)", "Alta (Caótica)"],
-            index=1,
-            help="Nivel de caos e incertidumbre en el entorno del sistema."
-        )
-
-        rigidez = st.selectbox(
-            "🧱 Rigidez (Capacidad K)",
-            ["Baja (Automatizada)", "Media (Estándar)", "Alta (Manual/Burocrático)"],
-            index=2,
-            help="Capacidad del sistema para procesar información y adaptarse."
-        )
-
-        colchon = st.slider(
-            "💰 Colchón Financiero (Meses)",
-            min_value=1, max_value=24, value=6,
-            help="Define el Umbral de Colapso (Theta_max). Actúa como batería de energía."
-        )
-
-        st.markdown("---")
-        st.caption("v2.3 | Powered by Gemini 3 Pro")
-
-        return volatilidad, rigidez, colchon
-
-def main():
-    setup_page()
-
-    # Cargar variables de entorno
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-
-    volatilidad, rigidez, colchon = render_sidebar()
-
-    # --- HERO SECTION ---
-    col_logo, col_title = st.columns([1, 5])
-    with col_logo:
-        st.write("") # Spacer
-        st.write("⚡", unsafe_allow_html=True) # Placeholder icon
-    with col_title:
-        st.title("ISO-ENTROPÍA")
-        st.markdown("### Auditor de Resiliencia Estructural & Insolvencia Informacional")
-
-    st.markdown("""
-    <div style='background-color: #181a20; padding: 15px; border-radius: 10px; border-left: 5px solid #FF4B4B;'>
-        <strong>🤖 Agente Autónomo:</strong> Este sistema utiliza <strong>Termodinámica de la Información</strong> + <strong>Razonamiento de IA</strong> 
-        para detectar puntos de quiebre invisibles en su operación 6-12 meses antes de que ocurran.
-    </div>
-    """, unsafe_allow_html=True)
+    rigidez = st.selectbox(
+        "🧱 Rigidez Operativa (Capacidad K)",
+        options=[
+            "Baja (Automatizada)",
+            "Media (Estándar)",
+            "Alta (Manual/Burocrático)"
+        ],
+        index=1,
+        help="Capacidad del sistema para adaptarse y procesar información. Afecta directamente a K (Capacidad de Respuesta)."
+    )
     
-    st.write("") # Spacer
-
-    # --- INPUT SECTION ---
-    with st.container():
-        col1, col2 = st.columns([3, 2])
+    colchon = st.slider(
+        "💰 Colchón Financiero (Meses)",
+        min_value=1,
+        max_value=24,
+        value=6,
+        step=1,
+        help="Buffer de tiempo antes del colapso. Define el Umbral de Colapso (θ_max)."
+    )
+    
+    st.markdown("---")
+    
+    # CONFIGURACIÓN AVANZADA
+    st.subheader("🔧 Opciones Avanzadas")
+    
+    advanced_options = st.expander("Mostrar opciones avanzadas", expanded=False)
+    
+    with advanced_options:
+        mock_mode = st.checkbox(
+            "🎭 Mock Mode (sin API)",
+            value=False,
+            help="Activa modo simulación sin consumir quota de API. Útil para testing y desarrollo."
+        )
         
-        with col1:
-            st.subheader("1. Contexto Operativo")
-            user_input = st.text_area(
-                "Describa la operación a auditar:",
-                height=150,
-                placeholder="Ej: Hospital privado con aumento del 40% en urgencias. Sistemas IT inestables. Personal agotado..."
+        verbose = st.checkbox(
+            "📝 Modo Verbose",
+            value=True,
+            help="Muestra logs detallados de cada iteración del agente."
+        )
+        
+        max_iterations = st.slider(
+            "🔄 Máximo de Iteraciones",
+            min_value=1,
+            max_value=20,
+            value=10,
+            help="Número máximo de iteraciones que el FSM puede ejecutar."
+        )
+    
+    st.markdown("---")
+    
+    # INFO
+    st.info(
+        "**Powered by:**\n"
+        "- google-genai SDK\n"
+        "- Gemini 3 Flash\n"
+        "- Termodinámica de Información",
+        icon="ℹ️"
+    )
+    
+    st.caption(
+        "ISO-ENTROPÍA v2.3 | "
+        "[GitHub](https://github.com/RogelioAlcantarRangel/Iso-Entropy) | "
+        "[Hackathon](https://gemini3.devpost.com/)"
+    )
+
+# ============================================================================
+# MAIN CONTENT - HERO SECTION
+# ============================================================================
+
+col_logo, col_title = st.columns([1, 5])
+
+with col_logo:
+    st.markdown("# ⚡")
+
+with col_title:
+    st.markdown("# ISO-ENTROPÍA")
+    st.markdown("### Auditoría de Fragilidad Estructural & Detección de Colapso Empresarial")
+
+st.markdown("""
+    <div style='background-color: #181a20; padding: 15px; border-radius: 10px; border-left: 5px solid #FF4B4B;'>
+        <strong>🤖 Auditor Autónomo:</strong> Utiliza <strong>Termodinámica de la Información</strong> + 
+        <strong>Razonamiento de IA (Gemini 3)</strong> para detectar puntos de quiebre invisibles en tu 
+        operación <strong>6-12 meses antes</strong> de que ocurran.
+    </div>
+""", unsafe_allow_html=True)
+
+st.write("")  # Spacer
+
+# ============================================================================
+# SECCIÓN 1: DESCRIPCIÓN DEL SISTEMA
+# ============================================================================
+
+st.subheader("1️⃣ Describe tu Sistema Operativo")
+
+user_input = st.text_area(
+    "Contexto operativo (incluye desafíos, cambios recientes, restricciones):",
+    height=150,
+    placeholder=(
+        "Ejemplo: Hospital privado de alta especialidad. "
+        "Demanda de urgencias creció 40% en 12 meses. "
+        "Escasez de personal especializado. "
+        "Sistemas IT presentan caídas intermitentes. "
+        "Márgenes financieros ajustados. "
+        "Cualquier interrupción tecnológica genera cascada de efectos."
+    ),
+    label_visibility="collapsed"
+)
+
+st.write("")  # Spacer
+
+# ============================================================================
+# SECCIÓN 2: BOTONES DE CONTROL
+# ============================================================================
+
+st.subheader("2️⃣ Iniciar Auditoría")
+
+col_btn1, col_btn2, col_spacer = st.columns([2, 1, 2])
+
+with col_btn1:
+    start_btn = st.button(
+        "🚀 EJECUTAR AUDITORÍA AUTÓNOMA",
+        type="primary",
+        use_container_width=True,
+        help="Inicia la auditoría completa con FSM, simulaciones y análisis."
+    )
+
+with col_btn2:
+    clear_btn = st.button(
+        "🗑️ Limpiar",
+        use_container_width=True,
+        help="Borra el historial de caché."
+    )
+
+if clear_btn:
+    st.session_state.clear()
+    st.rerun()
+
+st.write("")  # Spacer
+
+# ============================================================================
+# EJECUCIÓN DE AUDITORÍA
+# ============================================================================
+
+if start_btn:
+    # VALIDACIONES
+    api_key = os.getenv("GEMINI_API_KEY")
+    
+    if not user_input.strip():
+        st.error("⚠️ Por favor describe tu sistema operativo primero")
+        st.stop()
+    
+    if not api_key and not mock_mode:
+        st.warning(
+            "⚠️ GEMINI_API_KEY no encontrada en .env. "
+            "Activando Mock Mode automáticamente para demostración."
+        )
+        mock_mode = True
+    
+    # INICIALIZAR AGENTE
+    try:
+        agent = IsoEntropyAgent(
+            api_key=api_key if not mock_mode else None,
+            mock_mode=mock_mode,
+            verbose=verbose,
+            max_iterations=max_iterations
+        )
+    except Exception as e:
+        st.error(f"❌ Error inicializando agente: {e}")
+        st.stop()
+    
+    # EJECUTAR AUDITORÍA
+    status_placeholder = st.status(
+        "🔄 Iniciando auditoría autónoma...",
+        expanded=True
+    )
+    
+    with status_placeholder:
+        try:
+            # Crear contenedor para logs
+            logs_container = st.empty()
+            
+            # Capturar output
+            import io
+            from contextlib import redirect_stdout
+            
+            log_capture = io.StringIO()
+            
+            with redirect_stdout(log_capture):
+                result = agent.audit_system(
+                    user_input=user_input,
+                    volatilidad=volatilidad,
+                    rigidez=rigidez,
+                    colchon=colchon
+                )
+            
+            # Mostrar logs
+            logs = log_capture.getvalue()
+            if logs:
+                with st.expander("📋 Logs de Ejecución"):
+                    st.code(logs, language="text")
+            
+            status_placeholder.update(
+                label="✅ Auditoría completada",
+                state="complete"
             )
         
-        with col2:
-            st.subheader("2. Iniciar Diagnóstico")
-            st.info("El agente ejecutará simulaciones Monte Carlo y análisis semántico.")
-            start_btn = st.button("🚀 EJECUTAR AUDITORÍA FORENSE", type="primary", use_container_width=True)
+        except Exception as e:
+            status_placeholder.update(
+                label=f"❌ Error durante auditoría",
+                state="error"
+            )
+            st.error(f"Error: {str(e)}")
+            st.stop()
+    
+    # ========================================================================
+    # MOSTRAR RESULTADOS
+    # ========================================================================
+    
+    st.divider()
+    st.subheader("3️⃣ Resultados del Análisis")
+    st.write("")
+    
+    # KPIs
+    col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
+    
+    with col_kpi1:
+        st.metric(
+            "Experimentos",
+            len(agent.experiment_log),
+            help="Número de simulaciones ejecutadas por el FSM"
+        )
+    
+    with col_kpi2:
+        modo_texto = "🎭 Mock" if mock_mode else "🚀 Production"
+        st.metric(
+            "Modo",
+            modo_texto,
+            help="Modo de ejecución"
+        )
+    
+    with col_kpi3:
+        fase_actual = agent.fsm.phase_name()
+        st.metric(
+            "Fase Final",
+            fase_actual,
+            help="Última fase completada del FSM"
+        )
+    
+    with col_kpi4:
+        st.metric(
+            "Estado",
+            "✅ OK",
+            help="Estado de la auditoría"
+        )
+    
+    st.write("")
+    
+    # REPORTE PRINCIPAL
+    st.subheader("📄 Reporte Ejecutivo Completo")
+    st.markdown(result)
+    
+    # DESCARGAR
+    st.download_button(
+        label="📥 Descargar Reporte (Markdown)",
+        data=result,
+        file_name=f"auditoria_iso_entropia_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.md",
+        mime="text/markdown"
+    )
+    
+    # INFORMACIÓN TÉCNICA
+    with st.expander("🔬 Detalles Técnicos"):
+        col_tech1, col_tech2 = st.columns(2)
+        
+        with col_tech1:
+            st.write("**Parámetros Físicos:**")
+            st.json({
+                "volatilidad": volatilidad,
+                "rigidez": rigidez,
+                "colchon_meses": colchon,
+                "mock_mode": mock_mode
+            })
+        
+        with col_tech2:
+            st.write("**Historial FSM:**")
+            if agent.experiment_log:
+                hist_data = []
+                for exp in agent.experiment_log:
+                    hist_data.append({
+                        "Ciclo": exp['ciclo'],
+                        "Fase": exp['fase'],
+                        "K": f"{exp['hipotesis']['K']:.2f}",
+                        "Colapso": f"{exp['resultado']['tasa_de_colapso']:.1%}"
+                    })
+                
+                import pandas as pd
+                df = pd.DataFrame(hist_data)
+                st.dataframe(df, use_container_width=True)
 
-    # --- EXECUTION LOGIC ---
-    if start_btn:
-        if not api_key:
-            st.toast("⚠️ API key no configurada en .env. Configure GEMINI_API_KEY.", icon="⚠️")
-            return
-        if not user_input.strip():
-            st.toast("⚠️ Por favor describa la operación primero.", icon="⚠️")
-            return
+# ============================================================================
+# FOOTER
+# ============================================================================
 
-        # Contenedores para actualización en tiempo real
-        st.divider()
-        st.subheader("3. Análisis en Tiempo Real")
+st.divider()
 
-        status_container = st.status("🧠 Inicializando Agente Iso-Entropy Single-Turn...", expanded=True)
+col_footer1, col_footer2, col_footer3 = st.columns(3)
 
-        # Variables compartidas para el thread
-        shared_state = {
-            "reporte": None,
-            "error": None,
-            "telemetria": [],
-            "completo": False
-        }
+with col_footer1:
+    st.caption("**ISO-ENTROPÍA v2.3**")
 
-        # Ejecutar agente en hilo
-        def run_audit():
-            try:
-                agent = IsoEntropySingleTurnAgent(api_key=api_key if api_key else None)
-                # Guardamos referencia al agente para sacar telemetría después
-                shared_state["agent_ref"] = agent
-                result = agent.audit_system(user_input, volatilidad, colchon, rigidez)
-                if "error" in result:
-                    shared_state["error"] = result["error"]
-                else:
-                    shared_state["reporte"] = result["reporte_final"]
-                    shared_state["telemetria"] = result.get("telemetria", [])
-            except Exception as e:
-                shared_state["error"] = str(e)
-            finally:
-                shared_state["completo"] = True
+with col_footer2:
+    st.caption("*Powered by Gemini 3 Flash*")
 
-        thread = threading.Thread(target=run_audit, daemon=True)
-        thread.start()
-
-        # Esperar a que el agente complete (single-turn es rápido)
-        while not shared_state["completo"]:
-            status_container.update(label="🔄 Ejecutando análisis single-turn...", state="running")
-            time.sleep(1)
-
-        thread.join()
-        status_container.update(label="✅ Auditoría Completada", state="complete", expanded=False)
-
-        # --- RESULTADOS FINALES ---
-        if shared_state["error"]:
-            st.error(f"❌ Error Crítico: {shared_state['error']}")
-
-        elif shared_state["reporte"]:
-            agent = shared_state.get("agent_ref")
-
-            # 1. DASHBOARD DE MÉTRICAS (KPIs) - Simplificado para single-turn
-            st.divider()
-            st.subheader("4. Resultados del Diagnóstico")
-
-            # KPIs básicos basados en telemetría
-            telemetria = shared_state.get("telemetria", [])
-            if telemetria:
-                # Contar llamadas a funciones y tiempo de ejecución
-                function_calls = sum(1 for t in telemetria if t.get("event") == "function_executed")
-                audit_duration = "Completo"  # Simplificado
-
-                kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
-                kpi1.metric(
-                    "Funciones Ejecutadas",
-                    f"{function_calls}",
-                    help="Número de herramientas utilizadas por el agente"
-                )
-                kpi2.metric(
-                    "Estado",
-                    "✅ Completo",
-                    delta="Exitoso",
-                    delta_color="normal"
-                )
-                kpi3.metric(
-                    "Duración",
-                    audit_duration,
-                    help="Tiempo total de análisis"
-                )
-                kpi4.metric(
-                    "Modo",
-                    "Single-Turn",
-                    delta="Optimizado",
-                    delta_color="normal"
-                )
-
-            # 2. TABS DE DETALLE
-            tab_report, tab_telemetry = st.tabs(["📄 Reporte Ejecutivo", "🧠 Telemetría del Agente"])
-
-            with tab_report:
-                st.markdown(shared_state["reporte"])
-                st.download_button(
-                    "📥 Descargar PDF/Markdown",
-                    shared_state["reporte"],
-                    file_name="auditoria_iso_entropia.md"
-                )
-
-            with tab_telemetry:
-                st.info("Traza completa de ejecución y telemetría del Agente Single-Turn.")
-                telemetria = shared_state.get("telemetria", [])
-                if telemetria:
-                    for entry in telemetria:
-                        with st.expander(f"📊 {entry['event']} - {entry['timestamp'][:19]}"):
-                            st.json(entry.get("data", {}))
-                else:
-                    st.write("No hay datos de telemetría disponibles.")
-
-if __name__ == "__main__":
-    main()
+with col_footer3:
+    st.caption("[GitHub](https://github.com/RogelioAlcantarRangel/Iso-Entropy)")

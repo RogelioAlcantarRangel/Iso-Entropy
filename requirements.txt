@@ -1,15 +1,65 @@
-# requirements.txt - Iso-Entropy Autonomous Agent
+# requirements.txt - ISO-ENTROPÍA v2.3
+# Auditor de Fragilidad Estructural
 
-# Core Framework
+# ============================================================================
+# FRAMEWORKS PRINCIPALES
+# ============================================================================
+
+# UI Framework
 streamlit>=1.28.0
+
+# Gestión de variables de entorno
 python-dotenv>=0.21.0
 
-# AI Engine (Gemini 3 Flash)
+# ============================================================================
+# ✓ AI/LLM - GOOGLE GENAI (NO google-generativeai)
+# ============================================================================
+# CRÍTICO: Usar google-genai (nuevo SDK 2025)
+# NO usar google-generativeai (legacy 2024)
+
 google-genai>=1.0.0
 
-# Data Processing & Visualization
+# ============================================================================
+# DATA PROCESSING & VISUALIZATION
+# ============================================================================
+
+# Data manipulation
 pandas>=2.0.0
+
+# Plotting
 plotly>=5.17.0
 
-# Development (Optional but recommended)
-watchdog>=3.0.0  # Auto-reload for Streamlit during development
+# ============================================================================
+# SCIENTIFIC COMPUTING
+# ============================================================================
+
+# Numerical computing (usado por physics.py)
+numpy>=1.24.0
+
+# ============================================================================
+# DESARROLLO (Opcional pero recomendado)
+# ============================================================================
+
+# Auto-reload para desarrollo
+watchdog>=3.0.0
+
+# ============================================================================
+# NOTAS IMPORTANTES
+# ============================================================================
+#
+# 1. NO incluir:
+#    - google-generativeai (LEGACY, causa conflictos)
+#    - google-ai-generativelanguage (innecesario)
+#
+# 2. Versiones fijas para estabilidad:
+#    - streamlit>=1.28.0 (UI estable)
+#    - google-genai>=1.0.0 (GA version)
+#    - pandas>=2.0.0 (API estable)
+#
+# 3. Instalación:
+#    $ pip install -r requirements.txt
+#
+# 4. Actualizar después:
+#    $ pip install --upgrade -r requirements.txt
+#
+# ============================================================================
