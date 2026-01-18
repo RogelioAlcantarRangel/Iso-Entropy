@@ -320,11 +320,13 @@ Respuesta en formato JSON:
             self.prompt_cache[cache_key] = decision
             return decision
 
-        # --- CONFIGURACIÓN DE THINKING Y TEMPERATURA ---
+        # --- INICIO DEL CAMBIO QUIRÚRGICO ---
+        
+        # 1. Configuración para activar Thinking
         generate_content_config = types.GenerateContentConfig(
             temperature=0.25,
             thinking_config=types.ThinkingConfig(
-                include_thoughts=True,  # <--- ACTIVADO PARA VER EL CEREBRO
+                include_thoughts=True,  # <--- ESTO ES LO QUE FALTABA
                 thinking_level="low"
             ),
         )
@@ -336,21 +338,23 @@ Respuesta en formato JSON:
                 config=generate_content_config
             )
 
-            # CAPTURA DE PENSAMIENTOS (THOUGHTS)
+            # 2. Capturar Pensamientos (Lógica segura para evitar errores)
             thoughts = "No disponible"
             try:
-                # Intentar obtener thoughts de la estructura de respuesta (SDK v1)
+                # Intentar extraer thoughts de los candidatos
                 if hasattr(response, 'candidates') and response.candidates:
                     for part in response.candidates[0].content.parts:
                         if hasattr(part, 'thought') and part.thought:
                             thoughts = part.thought
                             break
             except Exception:
-                pass # Fallback silencioso
+                pass
 
-            # Opcional: Log en consola
+            # 3. Loguear el pensamiento para que aparezca en la UI (app.py)
             if thoughts != "No disponible":
-                self._log(f"\n💭 PENSAMIENTO INTERNO (Thinking):\n{thoughts[:200]}...\n")
+                self._log(f"\n🧠 PENSAMIENTO (Chain-of-Thought):\n{thoughts}\n")
+
+        # --- FIN DEL CAMBIO QUIRÚRGICO ---
 
             if self.fsm.phase == AgentPhase.CONCLUDE:
                 decision = {"action": "REPORT", "report_content": response.text}
@@ -652,7 +656,8 @@ INSTRUCCIÓN DE GROUNDING SEMÁNTICO:
                                     "insolvencia_informacional": ii_forced,
                                     "deuda_entropica_residual": 0.0  # Placeholder
                                 },
-                                "razonamiento_previo": f"Forced attempt #{attempt} tras colapso ≥ 99%"
+                                "razonamiento_previo": f"Forced attempt #{attempt} tras colapso ≥ 99%",
+                                "pensamiento_interno_gemini": "N/A"
                             })
 
                             self._log(f"      ➤ Resultado: Colapso = {forced_collapse:.1%}, UB95 = {forced_ub95:.1%}")
@@ -717,7 +722,8 @@ INSTRUCCIÓN DE GROUNDING SEMÁNTICO:
                                         "insolvencia_informacional": ii_replica,
                                         "deuda_entropica_residual": 0.0  # Placeholder
                                     },
-                                    "razonamiento_previo": f"Réplica para validar caso marginal K={replica_K:.2f}"
+                                    "razonamiento_previo": f"Réplica para validar caso marginal K={replica_K:.2f}",
+                                    "pensamiento_interno_gemini": "N/A"
                                 })
                                 
                                 self._log(f"      ➤ Réplica: Colapso = {replica_collapse:.1%}, UB95 = {replica_ub95:.1%}")

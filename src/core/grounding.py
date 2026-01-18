@@ -12,35 +12,45 @@ def clamp(value: float, min_v: float, max_v: float) -> float:
     return max(min_v, min(max_v, value))
 
 
-def ground_inputs(volatilidad, rigidez, colchon_meses):
-    # 1. Mapeo de Volatilidad (Entropía de Entrada - I)
-    # Ajustado para que "Alta" sea peligrosa pero no mortal instantánea
+def ground_inputs(volatilidad: str, rigidez: str, colchon_meses: int) -> Dict[str, float]:
+    """
+    Grounding físico determinista.
+    CALIBRADO PARA DEMO: Valores ajustados para generar tensión narrativa.
+    """
+
+    # 1. ENTROPÍA EXTERNA (I) - El "Caos"
+    # Alta = 5.0 (Peligroso pero sobrevivible si el agente es listo)
     volatilidad_map = {
         "Baja (Estable)": 0.6,
-        "Media (Estacional)": 1.2,
-        "Alta (Caótica)": 5.0  # ANTES ERA 10.0 (Demasiado alto)
+        "Media (Estacional)": 1.5,
+        "Alta (Caótica)": 5.0 
     }
     # Si no encuentra la clave, usa 5.0 por defecto
     I = volatilidad_map.get(volatilidad, 5.0)
 
-    # 2. Mapeo de Rigidez (Capacidad Inicial - K0)
-    # Baja rigidez = Alta capacidad de respuesta
+    # 2. CAPACIDAD INICIAL (K0) - La "Respuesta"
+    # Rigidez Alta = K bajo (0.8). Ratio I/K = 5.0/0.8 = 6.25 (CRÍTICO)
     rigidez_map = {
-        "Baja (Automatizada)": 2.5,
+        "Baja (Automatizada)": 3.0,
         "Media (Estándar)": 1.5,
         "Alta (Manual/Burocrático)": 0.8
     }
     K0 = rigidez_map.get(rigidez, 0.8)
 
-    # 3. Buffer Físico (Stock)
+    # 3. BUFFER FÍSICO (STOCK)
     # Normalizamos meses a un ratio (ej: 6 meses = 0.25)
-    stock = max(0.05, min(1.0, colchon_meses / 24.0))
+    stock = clamp(colchon_meses / 24.0, 0.05, 1.0)
 
-    # 4. Liquidez (Inversa a la rigidez para este modelo)
-    # Baja rigidez suele implicar mejor flujo de liquidez operativa
-    liquidity = 0.8 if "Baja" in rigidez else (0.5 if "Media" in rigidez else 0.2)
+    # 4. LIQUIDEZ (Fricción)
+    # Alta rigidez suele implicar baja liquidez operativa
+    if "Alta" in rigidez:
+        liquidity = 0.3
+    elif "Media" in rigidez:
+        liquidity = 0.6
+    else:
+        liquidity = 0.9
 
-    # 5. Capital (Valor base)
+    # 5. CAPITAL (Valor base)
     capital = 1.0
 
     return {
