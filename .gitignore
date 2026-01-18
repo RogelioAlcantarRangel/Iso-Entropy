@@ -34,6 +34,8 @@ ENV/
 # IDE y editores
 .vscode/
 .idea/
+.devcontainer/
+.github/
 
 # Archivos de log y temporales
 *.log
