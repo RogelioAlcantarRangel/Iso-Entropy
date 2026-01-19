@@ -281,16 +281,17 @@ st.write("")  # Spacer
 # ============================================================================
 
 if start_btn:
-    # VALIDACIONES
-    api_key = os.getenv("GEMINI_API_KEY")
+    # VALIDACIONES DE LLAVE Y LOGICA DE PRIORIDAD
+    env_key = os.getenv("GEMINI_API_KEY")
+    final_api_key = api_key_input.strip() if api_key_input else env_key
     
     if not user_input.strip():
         st.error("⚠️ Por favor describe tu sistema operativo primero")
         st.stop()
     
-    if not api_key and not mock_mode:
+    if not final_api_key and not mock_mode:
         st.warning(
-            "⚠️ GEMINI_API_KEY no encontrada en .env. "
+            "⚠️ GEMINI_API_KEY no encontrada. "
             "Activando Mock Mode automáticamente para demostración."
         )
         mock_mode = True
