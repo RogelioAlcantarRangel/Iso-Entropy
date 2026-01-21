@@ -1,97 +1,97 @@
-# ISO-ENTROPY PROJECT: Theoretical and Methodological Foundations
+# PROYECTO ISO-ENTROPÍA: Fundamentos Teóricos y Metodológicos
 
-## 1. Scope Statement
-The **Iso-Entropy Simulator V2.2** is a Proof of Concept designed to illustrate the dynamics of collapse in rigid systems.
-*   It is **NOT** a stock market prediction tool.
-*   It does **NOT** replace an ERP.
-*   It **IS** a heuristic model based on Thermodynamics and Information Theory.
-
----
-
-## 2. The Central Insight: "The Invisible Insolvency"
-A company may seem financially profitable today, but be **mathematically bankrupt** in its ability to process information. Collapse is not an accident; it is a debt that comes due.
-
-### The Bathtub Metaphor
-*   **The Faucet (Input Entropy - I):** The problems and chaos of the market pouring in.
-*   **The Drain (Response Capacity - K):** The company's ability to solve those problems.
-*   **The Collapse:** The "Efficiency" trend (JIT) reduces the size of the drain. If the drain is smaller than the faucet's stream, the bathtub overflows. No matter how luxurious the bathtub is, the water (Entropy Debt) will flood the house.
+## 1. Declaración de Alcance
+El **Simulador Iso-Entropía V2.2** es una Demostración Conceptual (Proof of Concept) diseñada para ilustrar la dinámica de colapso en sistemas rígidos.
+*   **NO** es una herramienta de predicción bursátil.
+*   **NO** sustituye a un ERP.
+*   **SÍ** es un modelo heurístico basado en Termodinámica y Teoría de la Información.
 
 ---
 
-## 3. Mathematical Foundations (Appendix A)
+## 2. El Insight Central: "La Insolvencia Invisible"
+Una empresa puede parecer rentable financieramente hoy, pero estar **matemáticamente quebrada** en su capacidad de procesar información. El colapso no es un accidente, es una deuda que se vence.
 
-### Ashby's Principle
-The Law of Requisite Variety (W. Ross Ashby, 1956) states that to maintain stability, the variety of the control mechanism ($VC$) must be at least equal to the variety of the disturbances ($VD$).
+### La Metáfora de la Bañera
+*   **El Grifo (Entropía de Entrada - I):** Los problemas y el caos del mercado que entran a presión.
+*   **El Desagüe (Capacidad de Respuesta - K):** La capacidad de la empresa para resolver esos problemas.
+*   **El Colapso:** La moda de la "Eficiencia" (JIT) reduce el tamaño del desagüe. Si el desagüe es más chico que el chorro del grifo, la bañera se desborda. No importa qué tan lujosa sea la bañera, el agua (Deuda de Entropía) inundará la casa.
+
+---
+
+## 3. Fundamentos Matemáticos (Anexo A)
+
+### El Principio de Ashby
+La Ley de Variedad Requerida (W. Ross Ashby, 1956) establece que para mantener la estabilidad, la variedad del mecanismo de control ($VC$) debe ser al menos igual a la variedad de las perturbaciones ($VD$).
 
 $$VC \ge VD$$
 
-In the context of Supply Chain:
-*   $VD \rightarrow I(t)$: Rate of incoming uncertainty (Demand + Forecast Error).
-*   $VC \rightarrow K(t)$: Decision processing capacity.
+En el contexto de Supply Chain:
+*   $VD \rightarrow I(t)$: Tasa de incertidumbre entrante (Demanda + Error de Pronóstico).
+*   $VC \rightarrow K(t)$: Capacidad de procesamiento de decisiones.
 
-If $I(t) > K(t)$, the system violates Ashby's law. The difference accumulates as **Entropy Debt (ED)**.
+Si $I(t) > K(t)$, el sistema viola la ley de Ashby. La diferencia se acumula como **Deuda de Entropía (DE)**.
 
-### Derivation of the Collapse Threshold ($\theta_{max}$)
-We postulate that financial and physical assets act as information "buffers". Money buys time, and time allows for information processing.
+### Derivación del Umbral de Colapso ($\theta_{max}$)
+Postulamos que los activos financieros y físicos actúan como "buffers" de información. El dinero compra tiempo, y el tiempo permite procesar información.
 
-We define the maximum absorption capacity ($\theta_{max}$) in **Bits**:
+Definimos la capacidad máxima de absorción ($\theta_{max}$) en **Bits**:
 
-$$ \theta_{max} = \log_2(1 + \text{Stock Ratio}) + \log_2(1 + \text{Capital Ratio}) + \log_2(1 + \text{Liquidity}) $$
+$$ \theta_{max} = \log_2(1 + \text{Ratio Stock}) + \log_2(1 + \text{Ratio Capital}) + \log_2(1 + \text{Liquidez}) $$
 
-**Interpretation:** A system with $\theta_{max} = 12$ bits can absorb $2^{12} = 4096$ states of disturbance before suffering a physical rupture.
+**Interpretación:** Un sistema con $\theta_{max} = 12$ bits puede absorber $2^{12} = 4096$ estados de perturbación antes de sufrir una ruptura física.
 
-### Dynamic State Equation
-The evolution of the debt is modeled as:
+### Ecuación Dinámica de Estado
+La evolución de la deuda se modela como:
 
-$$ \frac{dED}{dt} = \max(0, I(t) - K(t)) - \alpha \cdot \max(0, K(t) - I(t)) $$
+$$ \frac{dDE}{dt} = \max(0, I(t) - K(t)) - \alpha \cdot \max(0, K(t) - I(t)) $$
 
-*   **Accumulation:** When $I > K$, the debt grows.
-*   **Dissipation:** When $K > I$, the debt decreases (recovery).
-*   **Collapse:** Occurs when $ED(t) \ge \theta_{max}$.
-
----
-
-## 4. The Frozen Elements (3-1-1)
-
-### The 3 Variables (The Engine)
-1.  **Variable A (Input):** Market Chaos ($I$).
-2.  **Variable B (Process):** Response Capacity ($K$).
-3.  **Variable C (Accumulated):** Risk Debt ($ED$).
-
-### The Graph (The Evidence)
-*   **Red Line (Efficient/Fragile System):** Rises vertically and crosses the ceiling. Represents JIT systems without slack.
-*   **Blue Line (Resilient System):** Absorbs shocks and remains stable.
+*   **Acumulación:** Cuando $I > K$, la deuda crece.
+*   **Disipación:** Cuando $K > I$, la deuda decrece (recuperación).
+*   **Colapso:** Ocurre cuando $DE(t) \ge \theta_{max}$.
 
 ---
 
-## 5. Origin and Philosophy (Phase B)
+## 4. Los Elementos Congelados (3-1-1)
 
-### The Pain of the V16
-The model is born from the intuition: *"When I am forced to go slow and follow silly rules, my system collapses internally"*.
-A bureaucratic company is like a **carbonized V16 Engine**: it has theoretical power, but it is clogged by internal friction. Rigidity is not order; it is accumulated entropy.
+### Las 3 Variables (El Motor)
+1.  **Variable A (Entrada):** Caos del Mercado ($I$).
+2.  **Variable B (Proceso):** Capacidad de Respuesta ($K$).
+3.  **Variable C (Acumulado):** Deuda de Riesgo ($DE$).
 
-### The Cosmological Pivot
-Originally inspired by black hole physics (ADF/TCP).
-*   **Idea:** "What if we use the mathematics of 'Limits and Chaos' from the universe applied to a factory?"
-*   **Result:** The "Event Horizon" became the "Collapse Threshold" ($\theta_{max}$).
-
----
-
-## 6. Audit and Rigor (Appendix B)
-
-### Statistical Independence Correction
-In V1.0, entropies were summed ($H(D) + H(E)$).
-The audit determined that this ignored Mutual Information.
-**Correction V2.2:** The **Joint Entropy** $H(D, E)$ is calculated to capture the "structure of chaos". This validated that the fragility of the JIT model is intrinsic and mathematical, not a calculation error.
+### La Gráfica (La Evidencia)
+*   **Línea Roja (Sistema Eficiente/Frágil):** Sube verticalmente y cruza el techo. Representa sistemas JIT sin holgura.
+*   **Línea Azul (Sistema Resiliente):** Absorbe los golpes y se mantiene estable.
 
 ---
 
-## 7. Example Telemetry
-*Excerpt from JIT simulation:*
+## 5. Origen y Filosofía (Fase B)
+
+### El Dolor del V16
+El modelo nace de la intuición: *"Cuando me obligan a ir lento y seguir reglas tontas, mi sistema colapsa internamente"*.
+Una empresa burocrática es como un **Motor V16 carbonizado**: tiene potencia teórica, pero está obstruido por fricción interna. La rigidez no es orden, es entropía acumulada.
+
+### El Pivote Cosmológico
+Originalmente inspirado en física de agujeros negros (ADF/TCP).
+*   **Idea:** "¿Y si usamos las matemáticas de 'Límites y Caos' del universo aplicadas a una fábrica?"
+*   **Resultado:** El "Horizonte de Sucesos" se convirtió en el "Umbral de Colapso" ($\theta_{max}$).
+
+---
+
+## 6. Auditoría y Rigor (Anexo B)
+
+### Corrección de Independencia Estadística
+En la V1.0, se sumaban entropías ($H(D) + H(E)$).
+La auditoría determinó que esto ignoraba la Información Mutua.
+**Corrección V2.2:** Se calcula la **Entropía Conjunta** $H(D, E)$ para capturar la "estructura del caos". Esto validó que la fragilidad del modelo JIT es intrínseca y matemática, no un error de cálculo.
+
+---
+
+## 7. Telemetría de Ejemplo
+*Extracto de simulación JIT:*
 ```text
->>> STARTING SCENARIO: JIT
+>>> INICIANDO ESCENARIO: JIT
    Config: θ_max=2.17 bits
-   t=1.0: ED=0.42 | State=STABLE
-   t=3.0: ED=1.35 | State=TENSION
-   t=5.0: ED=2.21 | State=COLLAPSE
->>> 🚨 ALERT: Entropy Rupture (2.21 > 2.17).
+   t=1.0: DE=0.42 | Estado=ESTABLE
+   t=3.0: DE=1.35 | Estado=TENSIÓN
+   t=5.0: DE=2.21 | Estado=COLAPSO
+>>> 🚨 ALERTA: Ruptura de Entropía (2.21 > 2.17).

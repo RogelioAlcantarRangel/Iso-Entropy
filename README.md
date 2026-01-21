@@ -8,7 +8,7 @@
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-ff4b4b)](https://streamlit.io)
 [![Gemini 3 Flash](https://img.shields.io/badge/AI-Gemini%203%20Flash-8E44AD.svg)](https://deepmind.google/technologies/gemini/)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-green.svg)]()
-[![GitHub](https://img.shields.io/badge/Repo-ISO--ENTROPY-blueviolet)](https://github.com/RogelioAlcantarRangel/Iso-Entropy)
+[![GitHub](https://img.shields.io/badge/Repo-ISO--ENTROPÍA-blueviolet)](https://github.com/RogelioAlcantarRangel/Iso-Entropy)
 
 **ISO-ENTROPY detects when your company will collapse and tells you exactly how to prevent it.**
 
@@ -249,9 +249,9 @@ from src.core.agent import IsoEntropyAgent
 agent = IsoEntropyAgent(api_key="your-api-key")
 report = agent.audit_system(
     user_input="My retail company...",
-    volatility="High (Chaotic)",
-    rigidity="Medium (Standard)",
-    buffer=6
+    volatilidad="Alta (Caótica)",
+    rigidez="Media (Estándar)",
+    colchon=6
 )
 print(report)
 ```
@@ -357,7 +357,7 @@ MIT License - See [LICENSE](LICENSE)
 
 ## 🎉 Final Status
 
-**ISO-ENTROPY v2.3 is 100% COMPLETED and READY FOR PRODUCTION**
+**ISO-ENTROPÍA v2.3 is 100% COMPLETED and READY FOR PRODUCTION**
 
 - ✅ Code improved and validated
 - ✅ Complete documentation
@@ -368,6 +368,6 @@ MIT License - See [LICENSE](LICENSE)
 
 ---
 
-*ISO-ENTROPY v2.3*  
+*ISO-ENTROPÍA v2.3*  
 *"THAT ACTUALLY WORKS"*  
 *Detect fragility. Prevent collapse. Save lives.* 🚀

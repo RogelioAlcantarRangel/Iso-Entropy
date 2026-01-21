@@ -1,402 +1,402 @@
-# 📊 Use Case: Early Fragility Detection
+# 📊 Caso de Uso: Detección Temprana de Fragilidad
 
-## Real Scenario: Retail Company "INNOVASTORE"
+## Escenario Real: Empresa de Retail "INNOVASTORE"
 
-### Company Context
-- **Sector:** Technology Retail
-- **Annual Revenue:** USD 50 million
-- **Employees:** 350
-- **Market:** Highly volatile (new online competitors constantly)
-- **Processes:** Mixed (50% automated, 50% manual)
+### Contexto de la Empresa
+- **Sector:** Retail de tecnología
+- **Ingresos Anuales:** USD 50 millones
+- **Empleados:** 350
+- **Mercado:** Altamente volátil (nuevos competidores online constantemente)
+- **Procesos:** Mixto (50% automatizados, 50% manuales)
 
-### Typical Monthly Audit
+### Auditoría Mensual Típica
 
-#### WITHOUT ISO-ENTROPY
-1. Finance Director: "Numbers look good, profit of 3.5 million this month"
-2. External Auditor: "Healthy balance sheet"
-3. CEO: "Let's invest in expansion!"
-4. **6 months later:** Surprise collapse for "unknown reasons"
+#### SIN ISO-ENTROPÍA
+1. Director Finance: "Números se ven bien, ganancia de 3.5 millones este mes"
+2. Auditor externo: "Balance sheet saludable"
+3. CEO: "¡Vamos a invertir en expansión!"
+4. **6 meses después:** Colapso sorpresivo por "razones desconocidas"
 
-#### WITH ISO-ENTROPY v2.3
+#### CON ISO-ENTROPÍA v2.3
 
-**Input:**
+**Entrada:**
 ```
-System: INNOVASTORE
-Volatility: High (Chaotic) → I = 4.5 bits
-  Reasoning: Accelerated online competition, new entrants, 
-                trends change every 2-3 months
+Sistema: INNOVASTORE
+Volatilidad: Alta (Caótica) → I = 4.5 bits
+  Razonamiento: Competencia online acelerada, nuevos entrantes, 
+                tendencias cambian cada 2-3 meses
 
-Rigidity: Medium (Standard) → K = 0.72 bits
-  Reasoning: 50% manual processes, centralized decisions,
-                change cycle 4-6 weeks
+Rigidez: Media (Estándar) → K = 0.72 bits
+  Razonamiento: Procesos 50% manuales, decisiones centralizadas,
+                ciclo de cambio 4-6 semanas
 
-Financial Buffer: 6 months
-  Reasoning: Inventory + credit line + cash in banks
+Colchón Financiero: 6 meses
+  Razonamiento: Inventario + línea de crédito + cash en bancos
 ```
 
-**ITERATION 1: ORIENT PHASE - "Find stability"**
+**ITERACIÓN 1: FASE ORIENT - "Encontrar estabilidad"**
 
 Agent:
 ```
 PRE-CONTROL:
-✓ I (4.5) vs K (0.72): 4.5 > 1.5×0.72? No, continue (still controllable)
-✓ Stock > 0: Yes, INNOVASTORE has inventory
-✓ Degrees of freedom: Yes, can increase K
+✓ I (4.5) vs K (0.72): 4.5 > 1.5×0.72? No, continúa (aún controlable)
+✓ Stock > 0: Sí, INNOVASTORE tiene inventario
+✓ Grados de libertad: Sí, puede aumentar K
 
-LLM CALL:
-"Analyze if INNOVASTORE can be stabilized with a minimum increase of K.
-CONTEXT:
-- min_collapse: null (first run)
-- max_collapse: null
-- tested_K: null
-- stability_rate: null
+LLAMADA LLM:
+"Analiza si INNOVASTORE puede estabilizarse con incremento mínimo de K.
+CONTEXTO:
+- colapso_min: null (primer run)
+- colapso_max: null
+- K_testeado: null
+- tasa_estabilidad: null
 
-Telemetry Signal:
+Señal Telemetría:
 {
   'I': 4.5,
   'K': 0.72,
   'theta_max': 4.1,
-  'volatility': 'High',
-  'rigidity': 'Medium',
-  'buffer_months': 6
+  'volatilidad': 'Alta',
+  'rigidez': 'Media',
+  'colchon_meses': 6
 }"
 
-LLM DECISION:
-"SIMULATION: K → 0.95 bits (increase 0.23)
-Reasoning: I/K ratio = 4.5/0.72 = 6.25 (VERY HIGH).
-I propose improving operational response through selective 
-automation of inventory decisions."
+DECISIÓN LLM:
+"SIMULACIÓN: K → 0.95 bits (incremento 0.23)
+Razonamiento: I/K ratio = 4.5/0.72 = 6.25 (MUY ALTO).
+Propongo mejorar respuesta operativa mediante automatización
+selectiva de decisiones de inventario."
 
-EXECUTION: Physics.run_simulation(I=4.5, K=0.95, theta_max=4.1)
-RESULT:
-- collapse_rate: 18%
-- average_collapse_time: 22 weeks
-- total_collapses: 90 out of 500 runs
+EJECUCIÓN: Physics.run_simulation(I=4.5, K=0.95, theta_max=4.1)
+RESULTADO:
+- tasa_de_colapso: 18%
+- tiempo_promedio_colapso: 22 semanas
+- collapses_total: 90 de 500 runs
 
-FSM UPDATE:
-collapse = 18% > 10% → Remains in ORIENT
+ACTUALIZACIÓN FSM:
+colapso = 18% > 10% → Permanece en ORIENT
 ```
 
-**ITERATION 2: ORIENT PHASE - "Adaptive increase"**
+**ITERACIÓN 2: FASE ORIENT - "Incremento adaptativo"**
 
 Agent:
 ```
 _build_search_context():
-✓ min_collapse: 18%
-✓ max_collapse: 18%
-✓ avg_collapse: 18%
-✓ trend: WORSENED (18% > previous null)
-✓ tested_K: 0.72 → 0.95
-✓ stability_rate: 0% (none < 5%)
+✓ colapso_min: 18%
+✓ colapso_max: 18%
+✓ colapso_promedio: 18%
+✓ tendencia: EMPEORADO (18% > anterior null)
+✓ K_testeado: 0.72 → 0.95
+✓ tasa_estabilidad: 0% (ninguno < 5%)
 
-PROMPT TO LLM:
-"TREND: System still FRAGILE (18% collapse).
-I/K ratio = 4.5/0.95 = 4.74 (IMPROVED but still high).
+PROMPT AL LLM:
+"TENDENCIA: Sistema aún FRÁGIL (18% colapso).
+I/K ratio = 4.5/0.95 = 4.74 (MEJORÓ pero aún alto).
 
-What is the limiting factor?
-- I: 4.5 bits (very high, out of our immediate control)
-- K: 0.95 bits (improved but insufficient)
-- theta_max: 4.1 bits (limited by capital structure)
+¿Qué es el factor limitante?
+- I: 4.5 bits (muy alto, está fuera de nuestro control inmediato)
+- K: 0.95 bits (mejorado pero insuficiente)
+- theta_max: 4.1 bits (limitado por estructura de capital)
 
-RECOMMENDATION: Propose a LARGER increase in K (~0.4-0.5 bits)
-to get closer to equilibrium. Operational feasibility?"
+RECOMENDACIÓN: Propón incremento MAYOR de K (~0.4-0.5 bits)
+para acercarse a equilibrio. ¿Viabilidad operativa?"
 
-LLM DECISION:
-"SIMULATION: K → 1.4 bits (increase 0.45 from 0.95)
-Reasoning:
-1. Comprehensive automation of orders and forecasts
-2. Decentralize decisions to region managers
-3. Integrate AI to detect opportunities 48h before competitors
-Implementation time: 8 weeks"
+DECISIÓN LLM:
+"SIMULACIÓN: K → 1.4 bits (incremento 0.45 desde 0.95)
+Razonamiento:
+1. Automatización integral de pedidos y pronósticos
+2. Descentralizar decisiones a gerentes de región
+3. Integrar IA para detectar oportunidades 48h antes que competencia
+Tiempo implementación: 8 semanas"
 
-EXECUTION: Physics.run_simulation(I=4.5, K=1.4, theta_max=4.1)
-RESULT:
-- collapse_rate: 6%
-- average_collapse_time: 31 weeks
-- total_collapses: 30 out of 500 runs
+EJECUCIÓN: Physics.run_simulation(I=4.5, K=1.4, theta_max=4.1)
+RESULTADO:
+- tasa_de_colapso: 6%
+- tiempo_promedio_colapso: 31 semanas
+- collapses_total: 30 de 500 runs
 
-FSM UPDATE:
-collapse = 6% < 10% → TRANSITION TO VALIDATE
+ACTUALIZACIÓN FSM:
+colapso = 6% < 10% → TRANSICIÓN A VALIDATE
 ```
 
-**ITERATION 3: VALIDATE PHASE - "Reproducibility"**
+**ITERACIÓN 3: FASE VALIDATE - "Reproducibilidad"**
 
 Agent:
 ```
 _build_search_context():
-✓ min_collapse: 6%
-✓ max_collapse: 18%
-✓ avg_collapse: 14%
-✓ trend: IMPROVING (6% < 18%)
-✓ change_magnitude: 12%
-✓ tested_K: 0.95 → 1.4
-✓ stability_rate: 1/2 (50% < 5%, only the last one)
+✓ colapso_min: 6%
+✓ colapso_max: 18%
+✓ colapso_promedio: 14%
+✓ tendencia: MEJORANDO (6% < 18%)
+✓ magnitud_cambio: 12%
+✓ K_testeado: 0.95 → 1.4
+✓ tasa_estabilidad: 1/2 (50% < 5%, solo el último)
 
-PROMPT TO LLM:
-"STABILITY ACHIEVED (6% collapse).
-But it was the FIRST TIME at this K. Is it reproducible?
+PROMPT AL LLM:
+"ESTABILIDAD LOGRADA (6% colapso).
+Pero fue PRIMERA VEZ en este K. ¿Es reproducible?
 
-VALIDATION: Simulate EXACTLY the same K=1.4 bits.
-If reproducible: 2 consecutive runs BOTH with collapse < 5-7%
-If NOT reproducible: Statistical information, not a decision"
+VALIDACIÓN: Simula EXACTAMENTE el mismo K=1.4 bits.
+Si reproducible: 2 runs consecutivos AMBOS con colapso < 5-7%
+Si NO reproducible: Información estadística, no decisión"
 
-LLM DECISION:
-"SIMULATION: K → 1.4 bits (SAME as previous)
-Reasoning: Validate reproducibility of stability.
-If it fails: we go back to 0.95. If it replicates: confidence increases."
+DECISIÓN LLM:
+"SIMULACIÓN: K → 1.4 bits (MISMO que anterior)
+Razonamiento: Validar reproducibilidad de estabilidad.
+Si falla: volvemos a 0.95. Si replica: confianza aumenta."
 
-EXECUTION: Physics.run_simulation(I=4.5, K=1.4, theta_max=4.1)
-RESULT:
-- collapse_rate: 7%
-- average_collapse_time: 29 weeks
-- total_collapses: 35 out of 500 runs
+EJECUCIÓN: Physics.run_simulation(I=4.5, K=1.4, theta_max=4.1)
+RESULTADO:
+- tasa_de_colapso: 7%
+- tiempo_promedio_colapso: 29 semanas
+- collapses_total: 35 de 500 runs
 
-FSM UPDATE:
-collapse = 7% (close to previous 6%, reproducible ✓)
-2 consecutive iterations both < 8%? Yes → TRANSITION TO STRESS
+ACTUALIZACIÓN FSM:
+colapso = 7% (cercano a anterior 6%, reproducible ✓)
+2 iteraciones consecutivas ambas < 8%? Sí → TRANSICIÓN A STRESS
 ```
 
-**ITERATION 4: STRESS PHASE - "What is the real limit?"**
+**ITERACIÓN 4: FASE STRESS - "¿Cuál es el verdadero límite?"**
 
 Agent:
 ```
 _build_search_context():
-✓ avg_collapse: 6.5%
-✓ min_tested_K: 0.95
-✓ max_tested_K: 1.4
-✓ stable_experiments: 1/3
-✓ Fragility range found
+✓ colapso_promedio: 6.5%
+✓ K_min_testeado: 0.95
+✓ K_max_testeado: 1.4
+✓ experimentos_estables: 1/3
+✓ Rango de fragilidad encontrado
 
-PROMPT TO LLM:
-"K=1.4 bits stabilizes INNOVASTORE under current I=4.5.
-But: What if volatility INCREASES?
-What if capital decreases?
-What if operational rigidity regresses?
+PROMPT AL LLM:
+"K=1.4 bits estabiliza INNOVASTORE bajo I=4.5 actual.
+Pero: ¿Qué pasa si volatilidad AUMENTA?
+¿Qué pasa si capital disminuye?
+¿Qué pasa si rigidez operativa retrocede?
 
-STRESS TEST: Simulate adverse scenarios keeping K=1.4.
-Objective: Identify the real breaking point."
+STRESS TEST: Simula escenarios adversos manteniendo K=1.4.
+Objetivo: Identificar punto de quiebre real."
 
-LLM DECISION:
-"STRESS SCENARIO 1: Volatility increases 20% (I → 5.4 bits)
-Simulate: K=1.4 (CONSTANT), I=5.4
+DECISIÓN LLM:
+"STRESS SCENARIO 1: Volatilidad aumenta 20% (I → 5.4 bits)
+Simulo: K=1.4 (CONSTANTE), I=5.4
 
-STRESS SCENARIO 2: Capital decreases 30% (theta_max → 2.9)
-Simulate: K=1.4 (CONSTANT), reduced theta_max
+STRESS SCENARIO 2: Capital disminuye 30% (theta_max → 2.9)
+Simulo: K=1.4 (CONSTANTE), reducido theta_max
 
-STRESS SCENARIO 3: Rigidity increases (effective K → 1.1 bits)
-Simulate: K=1.1 (CONSTANT), I=4.5"
+STRESS SCENARIO 3: Rigidez aumenta (K efectivo → 1.1 bits)
+Simulo: K=1.1 (CONSTANTE), I=4.5"
 
-EXECUTION: Physics.run_simulation() for each scenario
+EJECUCIÓN: Physics.run_simulation() para cada scenario
 
-RESULTS:
-Scenario 1 (I=5.4, K=1.4): collapse = 35% → CRITICAL
-Scenario 2 (theta_max=2.9, K=1.4): collapse = 22% → HIGH
-Scenario 3 (K=1.1, I=4.5): collapse = 15% → MARGINAL
+RESULTADOS:
+Scenario 1 (I=5.4, K=1.4): colapso = 35% → CRÍTICO
+Scenario 2 (theta_max=2.9, K=1.4): colapso = 22% → ALTO
+Scenario 3 (K=1.1, I=4.5): colapso = 15% → MARGINAL
 
-FRAGILITY CLASSIFICATION:
-Base (current): 6% → ROBUST
-Scenario 1: 35% → STRUCTURALLY FRAGILE
-Scenario 2: 22% → FRAGILE
+CLASIFICACIÓN DE FRAGILIDAD:
+Base (actual): 6% → ROBUSTO
+Scenario 1: 35% → ESTRUCTURALMENTE FRÁGIL
+Scenario 2: 22% → FRÁGIL
 Scenario 3: 15% → MARGINAL
 
-CRITICAL FINDING: System critically depends on:
-1. AUTOMATION (K=1.4): If it regresses, fragility increases 150%
-2. VOLATILITY: If it rises 20%, collapse jumps to 35%
+HALLAZGO CRÍTICO: Sistema depende críticamente de:
+1. AUTOMATIZACIÓN (K=1.4): Si retrocede, fragilidad aumenta 150%
+2. VOLATILIDAD: Si sube 20%, colapso salta a 35%
 
-FSM UPDATE:
-Complete analysis → TRANSITION TO CONCLUDE
+ACTUALIZACIÓN FSM:
+Análisis completo → TRANSICIÓN A CONCLUDE
 ```
 
-**ITERATION 5: CONCLUDE PHASE - "FORENSIC REPORT"**
+**ITERACIÓN 5: FASE CONCLUDE - "REPORTE FORENSE"**
 
-FINAL LLM:
+LLM FINAL:
 
 ```markdown
 ### Critical Failure Point
 
-INNOVASTORE is currently ROBUST (6% collapse) under:
-- I = 4.5 bits (current volatility)
-- K = 1.4 bits (with comprehensive automation)
-- theta_max = 4.1 bits (current capital structure)
+INNOVASTORE actualmente es ROBUSTO (6% colapso) bajo:
+- I = 4.5 bits (volatilidad actual)
+- K = 1.4 bits (con automatización integral)
+- theta_max = 4.1 bits (estructura de capital actual)
 
-IDENTIFIED CRITICAL POINT:
-Collapse occurs when:
-1. Automation is partially reversed (K drops to 0.95)
-   → collapse jumps from 6% to 18%
-2. Volatility increases >20% (I passes 5.4)
-   → collapse jumps from 6% to 35% (EXTREME RISK)
-3. Capital is reduced >30%
-   → collapse jumps from 6% to 22%
+PUNTO CRÍTICO IDENTIFICADO:
+Colapso ocurre cuando:
+1. Automatización se revierte parcialmente (K baja a 0.95)
+   → colapso salta de 6% a 18%
+2. Volatilidad aumenta >20% (I pasa 5.4)
+   → colapso salta de 6% a 35% (RIESGO EXTREMO)
+3. Capital se reduce >30%
+   → colapso salta de 6% a 22%
 
-ACCUMULATED ENTROPY DEBT:
-Under current conditions (I=4.5, K=1.4):
-Each week: D_e += max(0, I - K) = 3.1 bits of "pressure"
-Each week: Dissipation = 0.15 × 3.1 = 0.47 bits
-Net: +2.63 bits/week of accumulated DEBT
+DEUDA DE ENTROPÍA ACUMULADA:
+En condiciones actuales (I=4.5, K=1.4):
+Cada semana: D_e += max(0, I - K) = 3.1 bits de "presión"
+Cada semana: Disipación = 0.15 × 3.1 = 0.47 bits
+Neto: +2.63 bits/semana de DEUDA acumulada
 
-Time until theta_max is reached:
+Tiempo hasta theta_max alcanzado:
 theta_max = 4.1 bits
-Debt accumulated at a rate of 2.63 bits/week
-T = 4.1 / 2.63 = ~1.56 weeks to collapse under EXTREME stress
+Deuda acumulada a tasa de 2.63 bits/semana
+T = 4.1 / 2.63 = ~1.56 semanas para colapso bajo estrés EXTREMO
 
 ### Survival Horizon
 
-TIMELINE WITH SCENARIOS:
+TIMELINE CON ESCENARIOS:
 
-**Base Scenario (Current):**
-- Horizon: INDEFINITE if K=1.4 is maintained
-- The 6% probability of collapse is distributed: 31 weeks average
-- This means: ON AVERAGE, INNOVASTORE could operate for 31 weeks
-  even in cases where it does collapse
+**Escenario Base (Actual):**
+- Horizonte: INDEFINIDO si se mantiene K=1.4
+- El 6% de probabilidad de colapso se distribuye: 31 semanas promedio
+- Esto significa: DE MEDIA, INNOVASTORE podría funcionar 31 semanas
+  incluso en casos donde sí colapsa
 
-**Adverse Scenario (Volatility +20%):**
-- Horizon: 8-12 weeks until probable collapse
-- RISK: If the market becomes 20% more chaotic (new massive competition),
-  the system COLLAPSES in 2-3 months
+**Escenario Adverso (Volatilidad +20%):**
+- Horizonte: 8-12 semanas hasta colapso probable
+- RIESGO: Si mercado se vuelve 20% más caótico (nueva competencia masiva),
+  sistema COLAPSA en 2-3 meses
 
-**Critical Scenario (Automation Reverse):**
-- Horizon: 2-3 weeks until collapse
-- RISK: If an organizational decision reverses investment in automation
-  (because "it costs too much"), fragility increases 3x
+**Escenario Crítico (Automatización Reversa):**
+- Horizonte: 2-3 semanas hasta colapso
+- RIESGO: Si decisión organizacional revierte inversión en automation
+  (porque "cuesta mucho"), fragilidad sube 3x
 
-**CONCLUSION:**
-With current K (1.4), INNOVASTORE has:
-- 6-12 months of BUFFER if conditions are maintained
-- 8-12 weeks if volatility increases 20%
-- 2-3 weeks if automation is reversed
+**CONCLUSIÓN:**
+Con K actual (1.4), INNOVASTORE tiene:
+- 6-12 meses de BUFFER si condiciones se mantienen
+- 8-12 semanas si volatilidad aumenta 20%
+- 2-3 semanas si automatización se revierte
 
 ### Actionable Mitigation
 
-CONCRETE RECOMMENDATIONS FOR INNOVASTORE:
+RECOMENDACIONES CONCRETAS PARA INNOVASTORE:
 
-**1. PROTECT AUTOMATION (CRITICAL) - Horizon: Immediate**
-   - Investment: $200K initial + $50K/year maintenance
-   - ROI: K increase from 0.72 → 1.4 bits (94% improvement)
-   - Action: Commit automation budget for 3 years
-   - Metric: If K regresses < 1.2, fragility increases 50%
+**1. PROTEGER LA AUTOMATIZACIÓN (CRÍTICA) - Horizonte: Inmediato**
+   - Inversión: $200K inicial + $50K/año mantenimiento
+   - ROI: Incremento K de 0.72 → 1.4 bits (94% mejora)
+   - Acción: Comprometer presupuesto de automación para 3 años
+   - Métrica: Si K retrocede < 1.2, fragilidad aumenta 50%
 
-**2. DIVERSIFY VOLATILITY (LONG TERM) - Horizon: 3-6 months**
-   - Current: 100% exposed to retail volatility (4.5 bits)
-   - Proposal: B2B revenue + subscriptions (reduce I → 3.0 bits)
-   - Impact: With I=3.0, collapse would drop from 6% to <2%
-   - Action: Develop B2B channel in parallel
+**2. DIVERSIFICAR VOLATILIDAD (LARGO PLAZO) - Horizonte: 3-6 meses**
+   - Actual: 100% expuesto a volatilidad retail (4.5 bits)
+   - Propuesta: Ingresos B2B + suscripciones (reducir I → 3.0 bits)
+   - Impacto: Con I=3.0, colapso bajaría de 6% a <2%
+   - Acción: Desarrollo de canal B2B en paralelo
 
-**3. STRENGTHEN CAPITAL (BUFFER) - Horizon: 6-12 months**
-   - Current: theta_max = 4.1 bits
-   - Proposal: Increased credit line from $2M → $4M
-   - Impact: theta_max rises from 4.1 → 5.2 bits
-   - Benefit: Collapse drops from 6% to 3%
-   - Action: Negotiate with banks for 2024
+**3. FORTALECER CAPITAL (BUFFER) - Horizonte: 6-12 meses**
+   - Actual: theta_max = 4.1 bits
+   - Propuesta: Línea de crédito aumentada de $2M → $4M
+   - Impacto: theta_max sube de 4.1 → 5.2 bits
+   - Beneficio: Colapso baja de 6% a 3%
+   - Acción: Negociar con bancos para 2024
 
-**MITIGATION SUMMARY:**
-1. Ensure K > 1.2 (automation)
-2. Reduce I from 4.5 → 3.0 bits (B2B)
-3. Increase theta_max from 4.1 → 5.2 (capital)
+**RESUMEN DE MITIGACIÓN:**
+1. Asegurar K > 1.2 (automatización)
+2. Reducir I de 4.5 → 3.0 bits (B2B)
+3. Aumentar theta_max de 4.1 → 5.2 (capital)
 
-With these 3 actions: Collapse drops from 6% → <1%
-INNOVASTORE goes from ROBUST to ULTRA-STABLE
+Con estas 3 acciones: Colapso baja de 6% → <1%
+INNOVASTORE pasa de ROBUSTO a ULTRA-ESTABLE
 ```
 
 ---
 
-## Real Impact: What Would Happen Without Analysis?
+## Impacto Real: ¿Qué Pasaría Sin Análisis?
 
-### Probable Real Timeline
+### Línea de Tiempo Real Probable
 
-**Today (Month 0):**
-- CEO: "Excellent results, let's expand"
-- Automatic investment reduced (to finance expansion)
-- K silently drops from 1.4 → 1.0 bits
+**Hoy (Mes 0):**
+- CEO: "Resultados excelentes, expandamos"
+- Inversión automática reducida (para financiar expansión)
+- K baja silenciosamente de 1.4 → 1.0 bits
 
-**Months 1-4:**
-- Numbers still look good (operational inertia)
-- But fragility rises (I/K ratio = 4.5/1.0 = 4.5)
-- System accumulates entropy debt
+**Meses 1-4:**
+- Números aún se ven bien (inercia operativa)
+- Pero fragilidad sube (I/K ratio = 4.5/1.0 = 4.5)
+- Sistema acumula deuda de entropía
 
-**Month 5:**
-- First "incident" of lack of coordination
-- Inventory in branch A, demand in branch B
-- CFO: "One-time operational issue"
+**Mes 5:**
+- Primer "incidente" de falta de coordinación
+- Inventario en sucursal A, demanda en sucursal B
+- CFO: "Problema operativo puntual"
 
-**Month 6:**
-- Second major incident
-- Major buyer seeks alternative
-- CEO: "This is worrying"
+**Mes 6:**
+- Segundo incidente mayor
+- Comprador importante busca alternativa
+- CEO: "Esto es preocupante"
 
-**Months 7-8:**
-- Market volatility INCREASES (recession announced)
-- I rises from 4.5 → 5.4 bits
-- Overloaded system
+**Meses 7-8:**
+- Volatilidad de mercado AUMENTA (recesión anunciada)
+- I sube de 4.5 → 5.4 bits
+- Sistema sobrecargado
 
-**Month 9: COLLAPSE**
-- Slow decisions during crisis
-- Customer runs to competitors
-- Unmoved inventory
-- Accumulated debt (D_e) reaches theta_max
-- **Company enters operational insolvency**
-
----
-
-## WITH ISO-ENTROPY v2.3: Prevention
-
-**Month 0:** Audit identifies:
-- K MUST be maintained at 1.4 minimum
-- Volatility is a critical factor
-- Automation is NON-NEGOTIABLE
-
-**Months 1-12:** CFO monitors:
-- Metric: Is K at 1.35? Alert
-- Metric: Is I at 5.0? Prepare mitigations
-- Metric: Is theta_max low? Start credit negotiation
-
-**Month 6:** When volatility RISES:
-- ISO-ENTROPY ALERTS: "Safety horizon dropped from 31 weeks to 12"
-- CEO: "I bought 12 weeks to prepare Plan B"
-- CTO: "We finished distribution automation"
-- CFO: "I closed the additional credit line"
-
-**Month 9:** System IS STILL STANDING
-- High volatility but K protects it
-- There is capital buffer
-- Company survives the chaotic period
-- Competitor collapsed (did not have analysis like this)
+**Mes 9: COLAPSO**
+- Decisiones lentas durante crisis
+- Corridas de clientes a competencia
+- Inventario sin mover
+- Deuda acumulada (D_e) alcanza theta_max
+- **Empresa entra en insolvencia operativa**
 
 ---
 
-## The Value: 6-12 Months of Anticipation
+## CON ISO-ENTROPÍA v2.3: Prevención
 
-### Without ISO-ENTROPY:
-Collapse seems like a "surprise" in month 9
-Reactive decisions in crisis
-90% probability of bankruptcy
+**Mes 0:** Auditoría identifica:
+- K DEBE mantenerse en 1.4 mínimo
+- Volatilidad es factor crítico
+- Automatización es NO-NEGOCIABLE
 
-### With ISO-ENTROPY v2.3:
-Collapse predicted in month 0
-Preventive actions in months 1-6
-90% probability of survival
+**Meses 1-12:** CFO monitorea:
+- Métrica: K está en 1.35? Alertar
+- Métrica: I está en 5.0? Preparar mitigaciones
+- Métrica: theta_max bajo? Arrancar negociación de crédito
 
-**Difference: Months 1-6 of preparation != Reactive crisis**
+**Mes 6:** Cuando volatilidad SUBE:
+- ISO-ENTROPÍA ALERTA: "Horizonte de seguridad pasó de 31 semanas a 12"
+- CEO: "Compré 12 semanas para preparar Plan B"
+- CTO: "Terminamos automatización de distribución"
+- CFO: "Cerré línea de crédito adicional"
+
+**Mes 9:** Sistema SIGUE EN PIE
+- Volatilidad alta pero K lo protege
+- Hay capital buffer
+- Empresa sobrevive el período caótico
+- Competencia colapsó (no tenía análisis como este)
 
 ---
 
-## Conclusion
+## El Valor: 6-12 Meses de Anticipación
 
-ISO-ENTROPY v2.3 does NOT predict the future.
-But it DOES identify:
-- Where the fragile point of the system is
-- When it falls if nothing changes
-- Exactly what to do to prevent it
+### Sin ISO-ENTROPÍA:
+Colapso parece "sorpresa" en mes 9
+Decisiones reactivas en crisis
+90% de probabilidad de quiebra
 
-For INNOVASTORE:
-- Analysis investment: $5K
-- Mitigation investment (automation, capital): $4M
-- Value saved (no bankruptcy): $50M+ in continuous revenue
+### Con ISO-ENTROPÍA v2.3:
+Colapso predicho en mes 0
+Acciones preventivas en meses 1-6
+90% de probabilidad de supervivencia
+
+**Diferencia: Months 1-6 de preparación != Crisis reactiva**
+
+---
+
+## Conclusión
+
+ISO-ENTROPÍA v2.3 NO predice el futuro.
+Pero SÍ identifica:
+- Dónde está el punto frágil del sistema
+- Cuándo cae si nada cambia
+- Exactamente qué hacerlo para prevenir
+
+Para INNOVASTORE:
+- Inversión de análisis: $5K
+- Inversión en mitigaciones (automatización, capital): $4M
+- Valor salvado (no quiebra): $50M+ en ingresos continuos
 - ROI: 10,000x
 
-**That's what "THAT ACTUALLY WORKS" means.**
+**Eso es lo que significa "QUE REALMENTE FUNCIONE".**
 
 ---
 
-*Use Case: INNOVASTORE*  
-*ISO-ENTROPY v2.3*  
-*Early Detection = Prevention = Survival*
+*Caso de Uso: INNOVASTORE*  
+*ISO-ENTROPÍA v2.3*  
+*Detección Temprana = Prevención = Supervivencia*

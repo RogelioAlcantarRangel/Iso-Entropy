@@ -17,18 +17,18 @@ class IsoEntropyFSM:
 
     def update(self, collapse_rate: Optional[float], upper_ci95: Optional[float] = None):
         """
-        Updates the FSM based on collapse and statistical validation.
+        Actualiza la FSM basándose en el colapso y validación estadística.
         
         Args:
-            collapse_rate: Observed collapse rate
-            upper_ci95: Upper bound of the Wilson confidence interval (95%)
+            collapse_rate: Tasa de colapso observada
+            upper_ci95: Límite superior del intervalo de confianza de Wilson (95%)
         """
         if collapse_rate is None:
             return
 
         stability_threshold = 0.05
         
-        # Validate statistical stability: collapse < 5% AND UB95 < 5% (if provided)
+        # Validar estabilidad estadística: colapso < 5% Y UB95 < 5% (si se proporciona)
         is_statistically_stable = collapse_rate < stability_threshold
         if upper_ci95 is not None:
             is_statistically_stable = is_statistically_stable and (upper_ci95 < stability_threshold)
@@ -58,13 +58,13 @@ class IsoEntropyFSM:
     def phase_reasoning(self) -> str:
         return {
             AgentPhase.ORIENT:
-                "Diagnose if the system can enter a stable region.",
+                "Diagnosticar si el sistema puede entrar en una región estable.",
             AgentPhase.VALIDATE:
-                "Confirm that the observed stability is not statistical.",
+                "Confirmar que la estabilidad observada no es estadística.",
             AgentPhase.STRESS:
-                "Detect structural fragility under controlled stress.",
+                "Detectar fragilidad estructural bajo estrés controlado.",
             AgentPhase.CONCLUDE:
-                "Additional informational gain is marginal."
+                "La ganancia informacional adicional es marginal."
         }[self.phase]
 
     def phase_name(self) -> str:

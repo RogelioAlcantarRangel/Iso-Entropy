@@ -4,9 +4,9 @@ from typing import List, Dict, Optional
 
 def build_llm_signal(experiment_log: List[Dict]) -> Dict:
     """
-    Builds a summary signal for the LLM (Context Pruning).
-    Summarizes the full history into key statistics to avoid context overload.
-    Handles compressed states.
+    Construye una señal resumida para el LLM (Context Pruning).
+    Resume el historial completo en estadísticas clave para evitar sobrecarga de contexto.
+    Maneja estados comprimidos.
     """
 
     if not experiment_log:
@@ -15,29 +15,29 @@ def build_llm_signal(experiment_log: List[Dict]) -> Dict:
             "trend": "none"
         }
 
-    # Check if compressed
+    # Verificar si está comprimido
     if len(experiment_log) == 1 and experiment_log[0].get("compressed"):
         summary = experiment_log[0]["summary"]
         if isinstance(summary, dict):
             return {
-                "experiments": "compressed",
-                "compressed_summary": summary.get("executive_summary", "Compressed"),
-                "entropy_debt": summary.get("accumulated_entropy_debt", 0.0),
-                "system_uncertainty": summary.get("system_uncertainty", 0.0),
-                "current_state": summary.get("current_state", "Unknown"),
-                "trends": summary.get("trends", "N/A"),
-                "recommendations": summary.get("recommendations", "N/A")
+                "experiments": "comprimido",
+                "compressed_summary": summary.get("resumen_ejecutivo", "Comprimido"),
+                "deuda_entropia": summary.get("deuda_entropia_acumulada", 0.0),
+                "incertidumbre": summary.get("incertidumbre_sistema", 0.0),
+                "estado_actual": summary.get("estado_actual", "Desconocido"),
+                "tendencias": summary.get("tendencias", "N/A"),
+                "recomendaciones": summary.get("recomendaciones", "N/A")
             }
         else:
             return {
-                "experiments": "compressed",
+                "experiments": "comprimido",
                 "compressed_summary": str(summary)
             }
 
-    # Filter invalid entries (no result or no hypothesis)
+    # Filtrar entradas inválidas (sin resultado o sin hipotesis)
     valid_experiments = [
         exp for exp in experiment_log 
-        if exp.get("result") and exp.get("hypothesis")
+        if exp.get("resultado") and exp.get("hipotesis")
     ]
     
     if not valid_experiments:
@@ -55,31 +55,31 @@ def build_llm_signal(experiment_log: List[Dict]) -> Dict:
             "overall_trend": "none"
         }
     
-    # Extract collapse rates with defensive validation
+    # Extraer tasas de colapso con validación defensiva
     collapse_rates = [
-        exp.get("result", {}).get("collapse_rate", 0.0) 
+        exp.get("resultado", {}).get("tasa_de_colapso", 0.0) 
         for exp in valid_experiments
     ]
     k_values = [
-        exp.get("hypothesis", {}).get("K", 0.0) 
+        exp.get("hipotesis", {}).get("K", 0.0) 
         for exp in valid_experiments
     ]
     theta_max_values = [
-        exp.get("full_parameters", {}).get("theta_max", 0.0) 
+        exp.get("parametros_completos", {}).get("theta_max", 0.0) 
         for exp in valid_experiments 
-        if exp.get("full_parameters")
+        if exp.get("parametros_completos")
     ]
     
-    # Calculate accumulated entropy debt (undissipated I - K)
+    # Calcular deuda de entropía acumulada (I - K no disipada)
     entropy_debt = 0.0
     for exp in valid_experiments:
-        I = exp.get("hypothesis", {}).get("I", 0.0)
-        K = exp.get("hypothesis", {}).get("K", 0.0)
-        collapse_rate = exp.get("result", {}).get("collapse_rate", 0.0)
+        I = exp.get("hipotesis", {}).get("I", 0.0)
+        K = exp.get("hipotesis", {}).get("K", 0.0)
+        collapse_rate = exp.get("resultado", {}).get("tasa_de_colapso", 0.0)
         if I > K:
-            entropy_debt += (I - K) * collapse_rate  # Weighted by collapse probability
+            entropy_debt += (I - K) * collapse_rate  # Ponderada por probabilidad de colapso
 
-    # Summary statistics
+    # Estadísticas resumidas
     signal = {
         "experiments": len(valid_experiments),
         "min_collapse_rate": min(collapse_rates),
@@ -93,7 +93,7 @@ def build_llm_signal(experiment_log: List[Dict]) -> Dict:
         "last_theta_max": theta_max_values[-1] if theta_max_values else 0.0
     }
 
-    # Overall trend
+    # Tendencia general
     if len(collapse_rates) >= 2:
         first_half = collapse_rates[:len(collapse_rates)//2]
         second_half = collapse_rates[len(collapse_rates)//2:]
