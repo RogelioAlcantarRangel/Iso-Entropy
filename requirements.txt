@@ -6,10 +6,10 @@
 # ============================================================================
 
 # UI Framework
-streamlit>=1.28.0
+streamlit>=1.53.0
 
 # Gestión de variables de entorno
-python-dotenv>=0.21.0
+python-dotenv>=1.2.0
 
 # ============================================================================
 # ✓ AI/LLM - GOOGLE GENAI (NO google-generativeai)
@@ -17,31 +17,31 @@ python-dotenv>=0.21.0
 # CRÍTICO: Usar google-genai (nuevo SDK 2025)
 # NO usar google-generativeai (legacy 2024)
 
-google-genai>=1.0.0
+google-genai>=1.59.0
 
 # ============================================================================
 # DATA PROCESSING & VISUALIZATION
 # ============================================================================
 
 # Data manipulation
-pandas>=2.0.0
+pandas>=2.3.3
 
 # Plotting
-plotly>=5.17.0
+plotly>=6.5.2
 
 # ============================================================================
 # SCIENTIFIC COMPUTING
 # ============================================================================
 
 # Numerical computing (usado por physics.py)
-numpy>=1.24.0
+numpy>=2.4.1
 
 # ============================================================================
 # DESARROLLO (Opcional pero recomendado)
 # ============================================================================
 
 # Auto-reload para desarrollo
-watchdog>=3.0.0
+watchdog>=6.0.0
 
 # ============================================================================
 # NOTAS IMPORTANTES
