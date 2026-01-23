@@ -168,9 +168,11 @@ ISO-ENTROPY/
 │   │   ├── grounding.py        # UI → Physics
 │   │   ├── telemetry.py        # LLM Signals
 │   │   ├── prompt_templates.py # Smart prompts
+│   │   ├── test_grounding.py   # Unit tests
 │   │   └── __init__.py
 │   ├── ui/                      # Streamlit Interface
 │   │   ├── app.py              # Main application
+│   │   ├── .gitignore          # UI-specific ignores
 │   │   └── __init__.py
 │   └── __init__.py
 ├── docs/                        # Documentation
@@ -178,11 +180,13 @@ ISO-ENTROPY/
 │   ├── CASE_STUDY.md           # Real world example
 │   ├── CONCEPT.md              # Theoretical concept
 │   ├── TESTING_GUIDE.md        # QA Guide
-│   └── THEORY.md               # Mathematical basis
-├── config/                      # Configuration
-│   └── .env.example            # Environment template
-├── scripts/                     # Tools and helpers
+│   ├── THEORY.md               # Mathematical basis
+│   ├── Iso-Entropy demo - Rogelio Alcantar Rangel - Gemini 3 Hackathon.mp4 # Demo video
+│   └── TESTING_GUIDE.md        # QA Guide
+├── .env.example                # Environment template
 ├── requirements.txt            # Python dependencies
+├── .gitignore                  # Git ignore rules
+├── .gitattributes              # Git attributes
 └── README.md                   # This file
 ```
 
@@ -228,7 +232,7 @@ pip install -r requirements.txt
 ### 2. Configure API Key
 ```bash
 # Copy environment template
-cp config/.env.example .env
+cp .env.example .env
 
 # Edit .env and enter your GEMINI_API_KEY
 # Or use mock mode for testing without API (ISO_MOCK_MODE=true)
@@ -236,31 +240,21 @@ cp config/.env.example .env
 
 ### 3. Run
 
-**Option 1: Streamlit UI (Recommended)**
+**Streamlit UI**
 ```bash
 streamlit run src/ui/app.py
 ```
 Browser opens automatically at: http://localhost:8501
 
-**Option 2: Python Direct**
-```python
-from src.core.agent import IsoEntropyAgent
-
-agent = IsoEntropyAgent(api_key="your-api-key")
-report = agent.audit_system(
-    user_input="My retail company...",
-    volatility="High (Chaotic)",
-    rigidity="Medium (Standard)",
-    buffer=6
-)
-print(report)
-```
-
 **Streamlit Interface:**
 1. Describe your operation (text).
 2. Choose volatility (dropdown).
 3. Choose rigidity (dropdown).
-4. Choose buffer (slider 3-12 months).
+4. Choose buffer (slider 0-12 months).
+5. Advances options.
+- Mock mode (no API).
+- Verbose mode (shows calculations).
+- Maximum iterations
 5. Click "RUN AUTONOMOUS AUDIT".
 6. Wait ~90 seconds.
 7. Receive Markdown report with recommendations.
@@ -317,33 +311,6 @@ Collapse occurs when:
 | **Safe** | Pre-control, parameter validation |
 | **Fast** | ~90 sec per audit |
 | **Scalable** | No breaking changes, compatible |
-
----
-
-## 📈 Roadmap
-
-- [x] v2.3: Agent Intelligence (COMPLETED)
-- [ ] v2.4: ERP System Integration
-- [ ] v2.5: Historical Audit Dashboard
-- [ ] v3.0: Machine learning for fragility patterns
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome:
-```bash
-git clone https://github.com/RogelioAlcantarRangel/Iso-Entropy.git
-git checkout -b feature/my-feature
-# ... make changes ...
-git push origin feature/my-feature
-```
-
----
-
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE)
 
 ---
 

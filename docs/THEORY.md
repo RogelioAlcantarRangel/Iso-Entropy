@@ -1,3 +1,4 @@
+
 # ISO-ENTROPY PROJECT: Theoretical and Methodological Foundations
 
 ## 1. Scope Statement

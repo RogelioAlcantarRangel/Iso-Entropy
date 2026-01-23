@@ -5,6 +5,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Archivos temporales y de sistema
 *.so
@@ -25,6 +26,9 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+LICENSE
+.kilocodemodes
+Iso-Entropy demo - Rogelio Alcantar Rangel - Gemini 3 Hackathon.mp4
 
 # Entornos virtuales
 .venv/
@@ -36,6 +40,8 @@ ENV/
 .idea/
 .devcontainer/
 .github/
+.kilocode/
+.pytest_cache/
 
 # Archivos de log y temporales
 *.log

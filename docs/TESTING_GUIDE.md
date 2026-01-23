@@ -27,14 +27,23 @@ The agent should show a flow like:
 🚀 STARTING AUTONOMOUS AGENT GEMINI 3 PRO
 📊 Calibration: High volatility, High rigidity, 3 months buffer
 
-============================================================
-🧠 THINKING CYCLE #1
-🔍 FSM_PHASE: ORIENT
-============================================================
+======================================================================
+🚀 ISO-ENTROPY AUTONOMOUS AUDIT
+======================================================================
+📊 Initial parameters: I=5.00, K=0.80
+📊 Collapse threshold: θ_max=1.88
+✅ Hard rules applied
+
+📍 Iteration 1/10 - Phase: ORIENT
+🔬 Simulating: I=5.00, K=0.80, θ_max=1.88
+📊 Result: Collapse=100.0%, UB95=100.0%
+🔄 FSM updated → ORIENT
+📈 Increasing K to 1.00
 
 [... Cycles of ORIENT → VALIDATE → STRESS ...]
 
-🏁 FSM has transitioned to CONCLUDE. Generating final report.
+📝 Generating final report with Gemini...
+✅ Audit completed successfully
 
 📄 GENERATING FINAL AUDIT REPORT (CONCLUDE PHASE)...
 ```
@@ -46,7 +55,8 @@ The agent should show a flow like:
 ### 1. CONCLUDE Phase Detection ✅
 **Expected signal in logs:**
 ```
-🏁 FSM has transitioned to CONCLUDE. Generating final report.
+📝 Generating final report with Gemini...
+✅ Audit completed successfully
 ```
 
 ### 2. LLM Call in CONCLUDE ✅
@@ -64,7 +74,7 @@ The agent should show a flow like:
 ### [Survival Horizon]
 ...estimation in cycles...
 
-### [Actionable Mitigation]
+### [Concrete Mitigation Actions]
 ...concrete proposal...
 ```
 
